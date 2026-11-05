@@ -28,7 +28,7 @@ if(!remotes.split(/\r?\n/).includes('origin'))git(['remote','add','origin',`http
 else if(git(['remote','get-url','origin'])!==`https://github.com/${fullname}.git`)throw new Error('Origin points to a different repository; refusing to change it.');
 git(['add','--','.']);
 const status=git(['status','--porcelain']);
-if(status)git(['commit','-m','Build private local-first AeroFace studio for GitHub Pages']);
+if(status)git(['commit','-m',process.argv[2]||'Build private local-first AeroFace studio for GitHub Pages']);
 git(['push','-u','origin','main'],{env:{...process.env,GIT_TERMINAL_PROMPT:'0',GCM_INTERACTIVE:'never'}});
 console.log(`Pushed ${git(['rev-parse','HEAD'])} to https://github.com/${fullname}`);
 let pages=await api(`/repos/${fullname}/pages`);

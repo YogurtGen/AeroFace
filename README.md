@@ -63,3 +63,13 @@ For each metric, the score is 10 inside the displayed reference interval. Outsid
 ## Checks
 
 `npm test` exercises symmetry, pixel-scale invariance, aspect-ratio handling, missing-side score behavior, malformed geometry rejection, and metric bounds. Browser checks cover responsive layout, file selection, invalid files, manual measurement, worker detection, report export, same-origin network behavior and offline operation.
+
+With Google Chrome installed, run the same end-to-end suite against a local production build or the deployed site:
+
+```sh
+npm run build
+node tests/browser.mjs
+node tests/browser.mjs https://yogurtgen.github.io/AeroFace/
+```
+
+The suite starts and stops its own local preview server when no URL is supplied. Test fixtures, screenshots, downloads and results are written to ignored `test-results/`. The front detector test uses an official public MediaPipe portrait fixture, not a user's private photo.

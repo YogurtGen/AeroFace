@@ -4,6 +4,12 @@ import { createHash } from 'node:crypto';
 await mkdir('public/vendor/wasm', { recursive: true });
 await mkdir('public/models', { recursive: true });
 await copyFile('node_modules/@mediapipe/tasks-vision/vision_bundle.js', 'public/vendor/vision_bundle.js');
+for (const [from, to] of [
+  ['node_modules/typescript/LICENSE', 'LICENSE-APACHE-2.0.txt'],
+  ['node_modules/@fontsource/geist/LICENSE', 'LICENSE-GEIST.txt'],
+  ['node_modules/lucide-react/LICENSE', 'LICENSE-LUCIDE.txt'],
+  ['node_modules/react/LICENSE', 'LICENSE-REACT.txt'],
+]) await copyFile(from, `public/vendor/${to}`);
 for (const file of await readdir('node_modules/@mediapipe/tasks-vision/wasm')) {
   if (file.endsWith('.wasm') || file.endsWith('.js')) {
     await copyFile(`node_modules/@mediapipe/tasks-vision/wasm/${file}`, `public/vendor/wasm/${file}`);
