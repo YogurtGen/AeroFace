@@ -44,7 +44,7 @@ export async function exportReport(photos: Photos, mode: Mode, includePhotos: bo
     for(let i=0;i<4;i++){const p=radarPoint(i,1);ctx.beginPath();ctx.moveTo(210,152);ctx.lineTo(p.x,p.y);ctx.stroke();}
     const points=radarPoints(metrics[side]);polygon(points);ctx.fillStyle='#699bdb26';ctx.fill();ctx.strokeStyle='#6995cf';ctx.lineWidth=1.8;ctx.stroke();
     const positions:[[number,number,CanvasTextAlign],[number,number,CanvasTextAlign],[number,number,CanvasTextAlign],[number,number,CanvasTextAlign]]=[[210,35,'center'],[312,147,'left'],[210,275,'center'],[108,147,'right']];
-    metrics[side].forEach((metric,i)=>{const[lx,ly,align]=positions[i];ctx.textAlign=align;ctx.font='12px Geist, sans-serif';ctx.fillStyle='#6b7f9b';ctx.fillText(t(radarLabels[metric.id]),lx,ly);ctx.fillStyle='#3c659b';ctx.fillText(scoreText(metric.score,language),lx,ly+18);});
+    metrics[side].forEach((metric,i)=>{const[lx,ly,align]=positions[i];ctx.textAlign=align;ctx.font='15px Geist, sans-serif';ctx.fillStyle='#6b7f9b';ctx.fillText(t(radarLabels[metric.id]),lx,ly);ctx.fillStyle='#3c659b';ctx.fillText(scoreText(metric.score,language),lx,ly+18);});
     ctx.restore();text(SIDE_LABEL[side],x+width/2-60,y+354,20,'#657080');
   }
   y+=390;text('Geometry profile · 0–10, separate from the AI estimate',116,y,19,'#657080');y+=46;

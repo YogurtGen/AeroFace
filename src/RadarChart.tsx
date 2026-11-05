@@ -10,6 +10,6 @@ export default function RadarChart({metrics,side}:{metrics:Metric[];side:Side}){
     <polygon points={points.map(p=>`${p.x},${p.y}`).join(' ')} fill="#699bdb" fillOpacity=".15" stroke="#6a98d2" strokeWidth="1.8"/>
     {points.map((point,index)=><circle key={index} cx={point.x} cy={point.y} r="3" fill="#5b8dc9" stroke="#fff" strokeWidth="1.5"/>)}
     {[2,6,10].map(value=><text key={value} x="218" y={152-86*value/10+4} fill="#9baac0" fontSize="9">{value}</text>)}
-    {metrics.map((metric,index)=>{const label=labels[index];return <text key={metric.id} x={label.x} y={label.y} textAnchor={label.anchor} fill="#6b7f9b" fontSize="11"><tspan x={label.x}>{t(radarLabels[metric.id])}</tspan><tspan x={label.x} dy="17" fill="#3c659b" fontSize="12">{scoreText(metric.score,language)}</tspan></text>;})}
+    {metrics.map((metric,index)=>{const label=labels[index];return <text key={metric.id} x={label.x} y={label.y} textAnchor={label.anchor} fill="#6b7f9b" fontSize="15"><tspan x={label.x}>{t(radarLabels[metric.id])}</tspan><tspan x={label.x} dy="20" fill="#3c659b" fontSize="16">{scoreText(metric.score,language)}</tspan></text>;})}
   </svg><figcaption>{t('Geometry profile · 0–10, separate from the AI estimate')}</figcaption></figure>;
 }
