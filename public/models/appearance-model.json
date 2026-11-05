@@ -1,0 +1,36 @@
+{
+  "model": "FaceONNX ResNet-18",
+  "file": "beauty_resnet18.onnx",
+  "bytes": 44779841,
+  "sha256": "48d33dd919aa9f2fd673cc94a53d5f4015584904468e2315beba138fb9da782e",
+  "source": "https://github.com/FaceONNX/FaceONNX.Models/tree/df11c0c73f46a9a675a16432374983fc5400d43a",
+  "archive": [
+    "https://raw.githubusercontent.com/FaceONNX/FaceONNX.Models/df11c0c73f46a9a675a16432374983fc5400d43a/models/onnx.addons.part1.rar",
+    "https://raw.githubusercontent.com/FaceONNX/FaceONNX.Models/df11c0c73f46a9a675a16432374983fc5400d43a/models/onnx.addons.part2.rar",
+    "https://raw.githubusercontent.com/FaceONNX/FaceONNX.Models/df11c0c73f46a9a675a16432374983fc5400d43a/models/onnx.addons.part3.rar",
+    "https://raw.githubusercontent.com/FaceONNX/FaceONNX.Models/df11c0c73f46a9a675a16432374983fc5400d43a/models/onnx.addons.part4.rar"
+  ],
+  "license": "MIT as published in the model archive repository",
+  "runtime": "1.31.1",
+  "preprocessing": {
+    "input": [
+      1,
+      3,
+      224,
+      224
+    ],
+    "order": "BGR",
+    "subtract": [
+      104,
+      117,
+      123
+    ],
+    "divide": 255,
+    "output": "raw times 2, clipped to 0–10"
+  },
+  "limitations": [
+    "Training dataset and subgroup performance are not documented by the publisher.",
+    "No separate man/woman calibration is provided.",
+    "No profile-view validation or PSL calibration is provided."
+  ]
+}

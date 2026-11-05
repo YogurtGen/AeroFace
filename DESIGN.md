@@ -9,7 +9,7 @@ The product's main visual is its own measurement process: points and contour rel
 ## Screens
 
 - Selection answers: which angle do I want to analyze, and which photo should I choose? Front, profile and full modes have independent file requirements.
-- Measurement answers: where did this measurement come from? A photo editor, keyboard-adjustable points and an explanation pane connect the evidence and score. Profile points use guided placement.
+- Measurement answers: where did this measurement come from? A photo editor, keyboard-adjustable points and an explanation pane connect the evidence and score. Profile points initialize automatically when the pose is supported and can be corrected manually.
 - Report answers: what did this selected analysis produce? Side scores, raw measurements, weights and report export controls share a consistent hierarchy. Unselected sides remain unscored.
 
 ## Material and motion
@@ -28,7 +28,7 @@ Every displayed measurement/reference segment has an explicit identity and named
 
 The shared profile illustration now has a defined nose, lips, chin, ear and jaw contour. Photo-help illustrations crop to the head, and stack vertically on phones. Small photo inputs remain usable with a visible resolution warning instead of a hard rejection.
 
-Geometry 2.0 replaces the old perfect-score intervals with continuous target-distance curves and uses a weighted geometric mean within each view. The report discloses community-inspired tier bands and the overlapping Sub-5 tag in both languages. Those labels describe the app's selected geometry rubric; they do not establish PSL validity, population rank or equivalence to a celebrity. Four measurements per view do not assess facial fullness, skin texture or overall attractiveness.
+Geometry 2.0 replaces the old perfect-score intervals with continuous target-distance curves and uses a weighted geometric mean within each view. The report discloses community-inspired tier bands and the overlapping Sub-5 tag in both languages. Tier assignment now requires a successful appearance-model estimate; geometry never substitutes for missing appearance inference. The labels do not establish PSL validity, population rank or equivalence to a celebrity. Four measurements per view do not assess facial fullness, skin texture or overall attractiveness.
 
 ## Visual verification
 
@@ -39,3 +39,11 @@ Tasteskill inspection allowances are `glass`, `gradient`, `button-fx` and `app-t
 The final inspection has no FAIL findings. One warning is accepted: the short selection screen contains a high share of 11–12 px metadata, file guidance and privacy labels; primary choices and controls use 13 px and body copy uses 14 px. No visible selection-screen label is below 11 px, and the disabled primary button's contrast was increased after inspection.
 
 Self-review after looking at all desktop, tablet and phone captures: design 8/10, usability 8/10, creativity 7/10, content 8/10 (weighted 7.8/10). These are internal design judgments, not external endorsements. The main remaining limitation is physical-device validation: the UI and reduced-motion behavior were checked in Chrome automation, not on an actual mid-range phone. The camera permission flow and system print dialog still warrant manual device checks.
+
+## Line art, reference and report update
+
+The user rejected both bald mannequin drawings and a detailed sculptural treatment, then requested simpler line art. Generated front/profile references were reduced to native SVG silhouettes with a few hair, eye, nose, mouth, ear and jaw contours. Only the selected measurement group is emphasized. The same SVG language supplies illustrative tier outlines; these are not calibrated reference faces. Final generation prompts and source images are recorded in `design/illustration-prompts.md`.
+
+Man/Woman is user-selected. It controls the illustrated reference and community terminology while the documented appearance model remains shared. The app does not infer gender or invent a separate calibration.
+
+The report separates the large numeric estimate and its tier into two aligned columns, including in print and PNG. A four-axis radar chart lives under each view heading before metric details. Its axes come directly from that view's geometric measurements, not AI confidence. Print places the photo and chart alongside each other and retains the numeric table. The contextual chin angle is identified as unscored.

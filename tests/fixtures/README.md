@@ -1,0 +1,1 @@
+`profile-render.png` is a synthetic adult head sculpture generated with the built-in image tool for AeroFace, then resized to 384 × 384 for automated profile-landmark tests. It is not a photograph of a person or a user-supplied image. The web interface uses native SVG line art; this raster is only an automated-test fixture.

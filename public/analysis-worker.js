@@ -2,7 +2,7 @@
 const origin = self.location.origin;
 const nativeFetch = self.fetch.bind(self);
 self.fetch = (input, init) => {
-  const url = new URL(typeof input === 'string' ? input : input.url, self.location.href);
+  const url = new URL(input instanceof URL ? input.href : typeof input === 'string' ? input : input.url, self.location.href);
   const method = init?.method || (typeof input === 'object' && input.method) || 'GET';
   if (url.origin !== origin || method.toUpperCase() !== 'GET') {
     return Promise.reject(new Error('External network requests are disabled.'));

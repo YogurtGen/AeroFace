@@ -1,44 +1,42 @@
 import { useI18n } from './i18n';
-import { useId } from 'react';
-import type { Side } from './analysis';
-export default function Illustration({ side = 'front', focus = 'balance', compact = false }: { side?: Side; focus?: 'balance'|'eyes'|'jaw'; compact?: boolean }) {
-  const { t } = useI18n();
-  const id=useId(), head=`${id}-head`, neck=`${id}-neck`, orb=`${id}-orb`;
-  const paths = side==='front' ? (focus==='eyes'?['146,218 193,218','193,218 247,218','247,218 294,218']:focus==='jaw'?['132,257 308,257','151,307 289,307']:['220,107 220,373','146,218 294,218']) : (focus==='eyes'?['330,252 305,337','309,287 318.85,289.90','307,305 313.82,307.01']:focus==='jaw'?['184,232 210,322','210,322 305,337']:['287,212 300,267 305,337']);
+import type { Side, RatingReference } from './analysis';
 
-  return <svg className="face-illustration" viewBox={compact?'85 62 280 315':'0 0 440 490'} fill="none" aria-label={t(side==='front'?'Front face guide illustration':'Side face guide illustration')} role="img">
-    <defs>
-      <linearGradient id={head} x1="115" y1="110" x2="340" y2="370" gradientUnits="userSpaceOnUse"><stop stopColor="#fff"/><stop offset=".5" stopColor="#dce2eb"/><stop offset="1" stopColor="#bdc8d7"/></linearGradient>
-      <linearGradient id={neck} x1="130" y1="400" x2="290" y2="460"><stop stopColor="#dae0e9"/><stop offset=".5" stopColor="#f8faff"/><stop offset="1" stopColor="#c5cfdd"/></linearGradient>
-      <radialGradient id={orb}><stop stopColor="#e1ebfa"/><stop offset="1" stopColor="#f2f5fa" stopOpacity="0"/></radialGradient>
-    </defs>
-    <ellipse cx="220" cy="270" rx="215" ry="215" fill={`url(#${orb})`}/>
-    <ellipse cx="220" cy="448" rx="126" ry="13" fill="#c4cddd" opacity=".18"/>
-    {side === 'front' ? <>
-      <path d="M177 331v54c-20 15-53 25-67 53 61 26 159 26 220 0-16-29-47-38-67-53v-54" fill={`url(#${neck})`}/>
-      <path d="M126 216c-17-14-24 6-17 34 3 15 12 26 24 23M314 216c17-14 24 6 17 34-3 15-12 26-24 23" fill="#d3dbe7" stroke="#bdc8d8"/>
-      <path d="M220 70c-64 0-104 46-99 117l11 84c7 57 50 96 88 101 38-5 81-44 88-101l11-84c5-71-35-117-99-117Z" fill={`url(#${head})`} stroke="#c7d0df"/>
-      <path d="M140 200c18-12 40-12 59-1M241 199c19-11 41-11 59 1" stroke="#a7b5c8" strokeWidth="3" strokeLinecap="round"/>
-      <path d="M146 218c14-10 34-10 47 0-13 11-33 11-47 0ZM247 218c13-10 33-10 47 0-14 11-34 11-47 0Z" fill="#eaf0f7" stroke="#a6b4c8" strokeWidth="1.5"/>
-      <ellipse cx="171" cy="219" rx="6" ry="7" fill="#9aaac1"/><ellipse cx="269" cy="219" rx="6" ry="7" fill="#9aaac1"/>
-      <path d="m220 222-13 49c6 7 20 7 26 0M203 285c10 4 24 4 34 0M185 307c23-11 47-11 70 0-23 15-47 15-70 0Z" stroke="#aebbcf" strokeWidth="1.5"/>
-      <path d="M144 252c11 32 27 58 48 75M296 252c-11 32-27 58-48 75M220 82v274" stroke="#fff" strokeOpacity=".65"/>
-      <g stroke="#5b8dd8" strokeWidth="1" opacity=".75"><path d="M146 218h148M132 257h176M151 307h138M220 107v266M146 218l74 67 74-67M132 257l88 99 88-99M151 307l69-22 69 22"/></g>
-      <g fill="#4787e1" stroke="white" strokeWidth="2">{[[146,218],[193,218],[247,218],[294,218],[132,257],[308,257],[151,307],[289,307],[220,285],[220,356]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="4"/>)}</g>
-      <path d="M91 218h37M91 218v139h112M327 218h23v67h-99" stroke="#8ca9d1" strokeDasharray="3 5"/>
-      {!compact&&<g fill="#54739f" fontSize="11" fontFamily="Geist, sans-serif"><text x="64" y="292" transform="rotate(-90 64 292)">{t('Face proportions')}</text><text x="291" y="203">{t('Eye line')}</text></g>}
-    </> : <>
-      <path d="M173 300v85c-30 16-53 31-66 55 63 24 151 24 215 0-17-28-50-41-70-55v-47" fill={`url(#${neck})`}/>
-      <path d="M185 74c62-9 103 25 106 78l-1 36c0 10 5 17-3 24 4 12 20 26 38 34 9 5 6 11-2 15l-23 6c-3 6-1 13 5 17l4 3-7 7 5 11c-5 6-7 11-3 20 5 9 2 16-7 20-24 9-62-4-87-23l-39-29c-26-23-42-58-42-105-1-58 14-105 56-114Z" fill={`url(#${head})`} stroke="#a9b9cf" strokeWidth="1.7" strokeLinejoin="round"/>
-      <path d="M184 232c14 15 19 53 26 90 33 8 59 18 87 13-27 12-64-2-87-13l-39-29Z" fill="#aabbd1" opacity=".2"/>
-      <path d="M253 198c11-7 22-7 32-2M257 215c10-5 18-4 26 1l-9 4-17-5Z" stroke="#8e9fb9" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M269 214v5" stroke="#7e91af" strokeWidth="3" strokeLinecap="round"/>
-      <path d="m302 256 9-2M299 293l7 1M294 316l8 2M182 226c-17-12-31-2-29 18 1 15 10 30 21 28 10-2 13-22 8-46ZM174 239c-10-3-12 9-4 16M193 267c18 20 26 30 32 42" stroke="#9aaec8" strokeWidth="1.8" strokeLinecap="round"/>
-      <g stroke="#5b8dd8" strokeWidth="1.4"><path d="m184 232 26 90 95 15M287 212l13 55 5 70M330 252l-25 85"/></g>
-      <path d="M210 322h-85M184 232h-59v90M305 337h43v-85h-18" stroke="#8ca9d1" strokeDasharray="3 5"/>
-      <g fill="#4787e1" stroke="white" strokeWidth="2">{[[287,212],[330,252],[300,267],[309,287],[307,305],[305,337],[210,322],[184,232]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="4"/>)}</g>
-      {!compact&&<g fill="#54739f" fontSize="11" fontFamily="Geist, sans-serif"><text x="108" y="293" transform="rotate(-90 108 293)">{t('Visual ramus')}</text><text x="288" y="367">{t('2D profile')}</text></g>}
+export default function Illustration({side='front',focus='balance',compact=false,plain=false,reference='man',variant=4}: {
+  side?:Side;focus?:'balance'|'eyes'|'jaw';compact?:boolean;plain?:boolean;reference?:RatingReference;variant?:number;
+}) {
+  const {t}=useI18n(),woman=reference==='woman';
+  const jaw=woman?277-variant:287-variant*1.8,chin=plain?370-variant*2.8:343;
+  const eyeWidth=plain?26+variant:33,eyeGap=plain?54-variant*3:42;
+  const li=220-eyeGap/2,lo=li-eyeWidth,ri=220+eyeGap/2,ro=ri+eyeWidth;
+  const paths=side==='front'
+    ? focus==='eyes'?['166,214 199,214','199,214 241,214','241,214 274,214']
+      :focus==='jaw'?[`149,249 291,249`,`166,303 274,303`]:[`220,177 220,${chin}`,'166,214 274,214']
+    :focus==='eyes'?['329,231 304,305','312,258 319.6,260.6','312,273 315.1,274.1']
+      :focus==='jaw'?['176,217 206,294','206,294 304,305']:['289,188 304,246 304,305'];
+  return <svg className={`face-illustration line-art ${plain?'outline-only':''}`} viewBox={compact?'85 62 280 315':'0 0 440 490'} fill="none" aria-label={t(side==='front'?'Front face guide illustration':'Side face guide illustration')} role="img">
+    <g stroke="#8294ae" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      {side==='front'?<>
+        <path d={`M147 177c-5 29-2 68 7 97Q159 291 ${440-jaw} 303L199 ${chin-6}q21 13 42 0L${jaw} 303Q281 291 286 274c9-29 12-68 7-97`}/>
+        <path d="M147 208c-18-15-24 1-18 22 2 13 7 24 20 25m144-47c18-15 24 1 18 22-2 13-7 24-20 25M137 216c-7 1-4 17 4 20m162-20c7 1 4 17-4 20"/>
+        {woman?<path d="M146 194c-22-34-9-88 23-105 23-19 65-24 91-9 40 2 55 48 38 97m-77-91c-11 32-34 42-68 50m70-48c9 24 31 37 61 47M145 160c-16 53-27 99-33 136m183-142c15 53 23 102 29 142"/>:<path d="M147 188c-14-10-16-29-10-46-13-27 8-48 31-50 15-22 34-28 56-19 23-15 47-8 54 10 30 1 42 22 31 43 14 16 10 40-12 60M150 143c30-41 76-9 113-42m-105 62c27-35 70-12 95-30"/>}
+        <path d={`M${lo-5} 199q${eyeWidth/2} -10 ${eyeWidth+5} -3M${ri-3} 196q${eyeWidth/2} -7 ${eyeWidth+8} 3M${lo} 214q${eyeWidth/2} -13 ${eyeWidth} 0q${-eyeWidth/2} 11 ${-eyeWidth} 0ZM${ri} 214q${eyeWidth/2} -13 ${eyeWidth} 0q${-eyeWidth/2} 11 ${-eyeWidth} 0ZM${(lo+li)/2} 211v6M${(ri+ro)/2} 211v6`}/>
+        <path d="M215 225l-7 37c4 5 7 5 12 5s8 0 12-5m-22 5 5 3m10 0 5-3M198 291c7-1 15-5 22-2 7-3 15 1 22 2m-44 0c15 4 29 4 44 0m-37 7c10 5 20 5 30 0"/>
+        <path d={`M175 ${chin/2+144}V367c-6 22-55 27-65 62M265 ${chin/2+144}V367c6 22 55 27 65 62M110 429c64 18 156 18 220 0`}/>
+      </>:<>
+        <path d="M140 177c-21-11-26-37-13-57 4-27 27-43 51-42 25-22 53-16 70-10 26-12 48-3 52 16 28 5 36 27 23 44-6 8-15 13-26 15M141 143c34-39 91-12 129-49m-106 61c22-19 57-7 79-30"/>
+        <path d="M297 143c0 14 5 28-1 36l-7 9c3 12 21 27 35 36 10 7 7 13-2 16l-18 6c-3 5 0 9 8 12 5 3 4 7-3 9l3 6c5 5-2 9-5 15-3 4 1 11-3 17-7 10-27 9-41 4l-57-15c-12-8-21-26-24-43M139 174c-11 25-6 48 5 66l15 24c5 12 8 27 7 39"/>
+        <path d="M176 217c-1-13-9-22-20-21-21 1-19 31-7 47 10 14 23 13 28-1m-10-28c-17 4-16 19-3 20M264 182c9-5 18-5 26-1m-26 16c8-7 17-8 25-6l-9 9-16-3Zm16-5v6M307 239l8-3m-16 31 11 0"/>
+        <path d="M166 303c0 36-20 53-42 69-20 14-32 31-39 57m178-120c-2 27-6 45 12 62 23 20 56 26 70 58M85 429c79 20 182 20 260 0"/>
+      </>}
+    </g>
+    {!plain&&<>
+      <g stroke="#77a0d5" strokeWidth="1" opacity=".38" strokeDasharray="3 5">
+        {side==='front'?<path d="M149 249H112v54h54m108 0h47v-54h-30"/>:<path d="M176 217h-48v77h78m98 11h43v-74h-18"/>}
+      </g>
+      <g className="guide-focus" key={`${side}-${focus}`} stroke="#4e8cda" strokeWidth="1.7" fill="none">
+        {paths.map((path,index)=><g key={path} style={{animationDelay:`${index*65}ms`}} className="guide-focus-segment"><polyline points={path}/>{path.split(' ').map((pair,i)=>{const[x,y]=pair.split(',').map(Number);return <circle key={i} cx={x} cy={y} r="3.5" fill="#f4f7fc"/>;})}</g>)}
+      </g>
+      {!compact&&<g fill="#6685ad" fontSize="11" fontFamily="Geist, sans-serif">{side==='front'?<text x="115" y="235">{t(focus==='eyes'?'Eye line':focus==='jaw'?'Jaw width':'Symmetry reference')}</text>:<text x="123" y="325">{t(focus==='jaw'?'Visual ramus':focus==='eyes'?'Lip–chin relation':'Profile balance')}</text>}</g>}
     </>}
-    <g className="guide-focus" key={`${side}-${focus}`} stroke="#337de3" strokeWidth="2.2" fill="none">{paths.map((path,index)=><g key={path} style={{animationDelay:`${index*65}ms`}} className="guide-focus-segment"><polyline points={path}/>{path.split(' ').map((pair,i)=>{const [x,y]=pair.split(',').map(Number);return <circle key={i} cx={x} cy={y} r="4.5" fill="#fff"/>;})}</g>)}</g>
   </svg>;
 }

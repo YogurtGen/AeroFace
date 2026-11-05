@@ -1,7 +1,10 @@
-import { definitions, type Points, type Side } from './analysis';
+import { type Points, type Side } from './analysis';
+import { mapLandmarks, type Landmark } from './landmarks';
+import type { Appearance } from './appearance';
 export type Photo = {
   url: string; blob: Blob; width: number; height: number;
   points: Points; source: 'auto' | 'manual'; confirmed: boolean;
+  appearance?: Appearance;
   quality: { light: number; detail: number; warnings: string[] };
 };
 export async function readPhoto(file: Blob): Promise<Photo> {
@@ -53,15 +56,16 @@ let worker: Worker | null = null;
 let cancelDetection: (() => void) | null = null;
 let requestId = 0;
 export function stopDetector() { cancelDetection?.(); cancelDetection = null; worker?.terminate(); worker = null; }
-export type DetectionPhase = 'runtime'|'model'|'detecting'|'geometry'|'visualizing';
-export async function detectFront(photo: Photo, onProgress?: (phase:DetectionPhase)=>void): Promise<Points> {
+export type DetectionPhase = 'runtime'|'model'|'detecting'|'geometry'|'rating'|'visualizing';
+export const detectFront=(photo:Photo,onProgress?:(phase:DetectionPhase)=>void)=>detectLandmarks(photo,'front',onProgress);
+export async function detectLandmarks(photo: Photo, side:Side, onProgress?: (phase:DetectionPhase)=>void): Promise<Points> {
   stopDetector();
   onProgress?.('runtime');
   worker = new Worker(new URL('analysis-worker.js', new URL(import.meta.env.BASE_URL, location.href)));
   const current = worker, id = ++requestId;
   const bitmap = await createImageBitmap(photo.blob);
   if (worker !== current) { bitmap.close(); throw new Error('Detection canceled.'); }
-  const landmarks = await new Promise<{ x: number; y: number }[][]>((resolve, reject) => {
+  const landmarks = await new Promise<Landmark[][]>((resolve, reject) => {
     const timeout = setTimeout(() => { cancelDetection = null; current.terminate(); reject(new Error('Detection took too long. Try again or place landmarks manually.')); }, 45000);
     cancelDetection = () => { clearTimeout(timeout); reject(new Error('Detection canceled.')); };
     current.onerror = () => { clearTimeout(timeout); cancelDetection = null; current.terminate(); reject(new Error('The local detector cannot run in this browser. Place landmarks manually.')); };
@@ -77,9 +81,9 @@ export async function detectFront(photo: Photo, onProgress?: (phase:DetectionPha
     current.postMessage({ bitmap, id }, [bitmap]);
   });
   if (landmarks.length > 1) throw new Error('More than one face was found. Crop the photo to show one face.');
-  if (!landmarks.length) throw new Error('No front face found. Try a straight, evenly lit photo, or place landmarks manually.');
+  if (!landmarks.length) throw new Error('No face found. Try a clear, evenly lit photo, or place landmarks manually.');
   onProgress?.('geometry');
-  return Object.fromEntries(definitions.front.map(def => [def.id, { x: Math.max(0, Math.min(1, landmarks[0][def.index!].x)), y: Math.max(0, Math.min(1, landmarks[0][def.index!].y)) }]));
+  return mapLandmarks(side,landmarks[0],photo.width,photo.height);
 }
 export const revokePhoto = (photo: Photo | undefined) => { if (photo) URL.revokeObjectURL(photo.url); };
 export type Photos = Partial<Record<Side, Photo>>;

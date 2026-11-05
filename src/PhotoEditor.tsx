@@ -1,6 +1,6 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { ChevronLeft, ChevronRight, Crosshair, ScanFace } from 'lucide-react';
-import { definitions, type Metric, type Point, type Side } from './analysis';
+import { contourAngles, definitions, distance, scoreText, type Metric, type Point, type Side } from './analysis';
 import { measurementLines, type MeasurementLine } from './measurement-lines';
 import { useI18n } from './i18n';
 import type { Photo } from './photos';
@@ -10,13 +10,15 @@ export default function PhotoEditor({photo,side,selectedMetric,editing,selectedP
   onSelectPoint:(id:string)=>void;onChange:(key:string,point:Point)=>void;zoom:number;
   activeLine?:MeasurementLine;onSelectLine?:(id:string)=>void;
 }) {
-  const {t}=useI18n(),svgRef=useRef<SVGSVGElement>(null),dragging=useRef<string|null>(null);
+  const {t,language}=useI18n(),svgRef=useRef<SVGSVGElement>(null),dragging=useRef<string|null>(null);
   const [announcement,setAnnouncement]=useState(''),defs=definitions[side];
   const pointFromPointer=(event:PointerEvent<SVGSVGElement>):Point=>{const rect=event.currentTarget.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height))};};
   const update=(key:string,point:Point)=>{onChange(key,point);setAnnouncement(`${t(defs.find(def=>def.id===key)?.label??'')} ${t('updated.')}`);};
   const place=(event:PointerEvent<SVGSVGElement>)=>{if(!editing||event.target!==event.currentTarget)return;update(selectedPoint,pointFromPointer(event));const next=defs.find(def=>def.id!==selectedPoint&&!photo.points[def.id]);if(next)onSelectPoint(next.id);};
   const lines=measurementLines(side,photo.points,photo.width,photo.height).filter(line=>!selectedMetric||line.metricIds.includes(selectedMetric.id));
   const activePoints=selectedMetric?.points??Object.keys(photo.points);
+  let angles:ReturnType<typeof contourAngles>=[];
+  if(side==='profile'&&!editing)try{angles=contourAngles(photo.points,photo.width,photo.height).filter(item=>!selectedMetric||item.id===selectedMetric.id||(selectedMetric.id==='ramus'&&item.id==='profile-jaw'));}catch{/* Partial points do not form an angle yet. */}
   return <>
     <div className={`photo-canvas ${editing?'is-editing':'is-exploring'} ${photo.source==='auto'?'auto-landmarks':''}`}>
       <div className="photo-image-wrap" style={{aspectRatio:`${photo.width}/${photo.height}`,width:`min(100%, calc(var(--photo-height) * ${photo.width/photo.height}))`,transform:`scale(${zoom})`}}>
@@ -34,6 +36,14 @@ export default function PhotoEditor({photo,side,selectedMetric,editing,selectedP
               <line className="line-visible" x1={line.from.x*photo.width} y1={line.from.y*photo.height} x2={line.to.x*photo.width} y2={line.to.y*photo.height} stroke={active?'#9acaff':'#4b99ff'} strokeWidth={active?3:1.5} strokeDasharray={line.reference?'5 4':undefined} vectorEffect="non-scaling-stroke" pointerEvents="none"/>
             </g>;})}
           </g>
+          <g className="contour-angle-marks" pointerEvents="none">{angles.map(item=>{
+            const a=Math.atan2(item.from.y-item.vertex.y,item.from.x-item.vertex.x),b=Math.atan2(item.to.y-item.vertex.y,item.to.x-item.vertex.x);
+            const delta=Math.atan2(Math.sin(b-a),Math.cos(b-a));
+            const radius=Math.min(distance(item.from,item.vertex),distance(item.to,item.vertex))*.26;
+            const start={x:item.vertex.x+Math.cos(a)*radius,y:item.vertex.y+Math.sin(a)*radius},end={x:item.vertex.x+Math.cos(a+delta)*radius,y:item.vertex.y+Math.sin(a+delta)*radius};
+            const label={x:item.vertex.x+Math.cos(a+delta/2)*radius*1.8,y:item.vertex.y+Math.sin(a+delta/2)*radius*1.8};
+            return <g key={item.id}><path d={`M${start.x} ${start.y} A${radius} ${radius} 0 0 ${delta>0?1:0} ${end.x} ${end.y}`} stroke="#b8d8ff" strokeWidth="1.7" vectorEffect="non-scaling-stroke" fill="none"/><text x={label.x} y={label.y} textAnchor="middle" dominantBaseline="central" fontSize={Math.max(8,photo.width*.022)} fill="white" stroke="#233c5d" paintOrder="stroke" strokeWidth="2" strokeLinejoin="round">{scoreText(item.degrees,language)}°</text></g>;
+          })}</g>
           {defs.filter(def=>photo.points[def.id]).map((def,index)=>{const point=photo.points[def.id],active=activePoints.includes(def.id),selected=editing&&selectedPoint===def.id;return <g key={def.id} className={`measure-point ${active?'active':'dimmed'} ${selected?'selected':''}`} style={{animationDelay:`${index*35}ms`}} role={editing?'button':undefined} tabIndex={editing?0:undefined} aria-label={`${t(def.label)}. ${t('Use arrow keys to move.')}`} onFocus={()=>onSelectPoint(def.id)}
             onKeyDown={event=>{if(!editing||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const delta=event.shiftKey?.01:.002;update(def.id,{x:Math.max(0,Math.min(1,point.x+(event.key==='ArrowRight'?delta:event.key==='ArrowLeft'?-delta:0))),y:Math.max(0,Math.min(1,point.y+(event.key==='ArrowDown'?delta:event.key==='ArrowUp'?-delta:0)))});}}
             onPointerDown={event=>{if(!editing)return;event.stopPropagation();onSelectPoint(def.id);dragging.current=def.id;svgRef.current?.setPointerCapture(event.pointerId);}}>

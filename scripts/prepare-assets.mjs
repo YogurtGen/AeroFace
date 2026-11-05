@@ -27,3 +27,4 @@ try { model = await readFile(path); } catch {
 const digest = createHash('sha256').update(model).digest('hex');
 if (digest !== expectedHash) throw new Error('Face model checksum mismatch. Refusing an unverified model.');
 console.log(`Local face model ready (${model.length} bytes, sha256 ${digest})`);
+await import('./prepare-appearance.mjs');

@@ -1,5 +1,6 @@
 export type Side = 'front' | 'profile';
 export type Mode = Side | 'full';
+export type RatingReference = 'man'|'woman';
 export type Point = { x: number; y: number };
 export type Points = Record<string, Point>;
 export type Definition = { id: string; label: string; hint: string; index?: number };
@@ -22,6 +23,19 @@ export const tiers = [
 export function scoreTier(score:number) {
   if(!Number.isFinite(score)||score<0||score>10) throw new Error('Invalid score.');
   return tiers.find(tier=>score<tier.max)??tiers[tiers.length-1];
+}
+export function tierLabel(score:number,reference:RatingReference='man'){
+  const index=tiers.indexOf(scoreTier(score));
+  return reference==='woman'?['Sub-3','LTB','MTB','HTB','Stacylite','Stacy','Eve','True Eve'][index]:tiers[index].label;
+}
+export function contourAngles(points:Points,width:number,height:number){
+  validatePoints('profile',points,width,height);
+  const p=toPixels(points,width,height);
+  return [
+    {id:'profile-balance',name:'Profile balance',from:p.nasion,vertex:p.noseBase,to:p.chin},
+    {id:'profile-jaw',name:'Jaw contour angle',from:p.ramusTop,vertex:p.jawAngle,to:p.chin},
+    {id:'chin-contour',name:'Chin contour angle',from:p.lowerLip,vertex:p.chin,to:p.jawAngle},
+  ].map(item=>({...item,degrees:angle(item.from,item.vertex,item.to)}));
 }
 export const SIDE_LABEL: Record<Side, string> = { front: 'Front view', profile: 'Side view' };
 export const definitions: Record<Side, Definition[]> = {
