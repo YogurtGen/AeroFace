@@ -30,6 +30,7 @@ self.onmessage = async event => {
     if (!detector) {
       const base = new URL('./', self.location.href).href;
       const fileset = await Vision.FilesetResolver.forVisionTasks(base + 'vendor/wasm');
+      self.postMessage({ id, stage: 'model' });
       detector = await Vision.FaceLandmarker.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: base + 'models/face_landmarker.task', delegate: 'CPU' },
         runningMode: 'IMAGE', numFaces: 2,
@@ -40,6 +41,7 @@ self.onmessage = async event => {
       });
     }
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    self.postMessage({ id, stage: 'detecting' });
     const context = canvas.getContext('2d');
     context.drawImage(bitmap, 0, 0);
     const result = detector.detect(canvas);

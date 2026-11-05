@@ -5,11 +5,11 @@ export type Photo = {
   quality: { light: number; detail: number; warnings: string[] };
 };
 export async function readPhoto(file: Blob): Promise<Photo> {
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Gunakan foto JPG, PNG, atau WebP. Untuk HEIC, ekspor sebagai JPG terlebih dahulu.');
-  if (file.size > 20 * 1024 * 1024) throw new Error('Ukuran foto maksimal 20 MB. Pilih versi yang lebih kecil.');
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Use JPG, PNG, or WebP. Export HEIC photos as JPG first.');
+  if (file.size > 20 * 1024 * 1024) throw new Error('Photos can be up to 20 MB. Choose a smaller version.');
   let bitmap: ImageBitmap;
-  try { bitmap = await createImageBitmap(file); } catch { throw new Error('Foto tidak bisa dibaca. Coba simpan ulang sebagai JPG atau PNG.'); }
-  if (Math.min(bitmap.width, bitmap.height) < 256) { bitmap.close(); throw new Error('Foto terlalu kecil. Gunakan foto minimal 256 piksel pada sisi terpendek.'); }
+  try { bitmap = await createImageBitmap(file); } catch { throw new Error('Could not read this photo. Try saving it again as JPG or PNG.'); }
+  if (Math.min(bitmap.width, bitmap.height) < 256) { bitmap.close(); throw new Error('This photo is too small. Use at least 256 pixels on its shortest edge.'); }
   const factor = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * factor); canvas.height = Math.round(bitmap.height * factor);
@@ -29,10 +29,10 @@ async function photoFromCanvas(canvas: HTMLCanvasElement): Promise<Photo> {
   }
   light /= 96 * 96; detail /= 96 * 96;
   const warnings: string[] = [];
-  if (light < 50) warnings.push('Pencahayaan tampak gelap. Coba foto dengan cahaya merata.');
-  if (light > 230) warnings.push('Pencahayaan sangat terang. Pastikan kontur wajah masih jelas.');
-  if (detail < 2) warnings.push('Detail foto tampak rendah. Periksa fokus dan ketajamannya.');
-  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Foto gagal diproses.')), 'image/jpeg', 0.94));
+  if (light < 50) warnings.push('Lighting looks dark. Try an evenly lit photo.');
+  if (light > 230) warnings.push('Lighting looks very bright. Make sure the facial contour is still visible.');
+  if (detail < 2) warnings.push('Photo detail looks low. Check focus and sharpness.');
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not process this photo.')), 'image/jpeg', 0.94));
   return { url: URL.createObjectURL(blob), blob, width: canvas.width, height: canvas.height, points: {}, source: 'manual', confirmed: false, quality: { light, detail, warnings } };
 }
 export async function transformPhoto(photo: Photo, operation: 'rotate' | 'crop'): Promise<Photo> {
@@ -53,28 +53,32 @@ let worker: Worker | null = null;
 let cancelDetection: (() => void) | null = null;
 let requestId = 0;
 export function stopDetector() { cancelDetection?.(); cancelDetection = null; worker?.terminate(); worker = null; }
-export async function detectFront(photo: Photo): Promise<Points> {
+export type DetectionPhase = 'runtime'|'model'|'detecting'|'geometry';
+export async function detectFront(photo: Photo, onProgress?: (phase:DetectionPhase)=>void): Promise<Points> {
   stopDetector();
+  onProgress?.('runtime');
   worker = new Worker(new URL('analysis-worker.js', new URL(import.meta.env.BASE_URL, location.href)));
   const current = worker, id = ++requestId;
   const bitmap = await createImageBitmap(photo.blob);
-  if (worker !== current) { bitmap.close(); throw new Error('Deteksi dibatalkan.'); }
+  if (worker !== current) { bitmap.close(); throw new Error('Detection canceled.'); }
   const landmarks = await new Promise<{ x: number; y: number }[][]>((resolve, reject) => {
-    const timeout = setTimeout(() => { cancelDetection = null; current.terminate(); reject(new Error('Deteksi terlalu lama. Coba lagi atau gunakan penempatan titik manual.')); }, 45000);
-    cancelDetection = () => { clearTimeout(timeout); reject(new Error('Deteksi dibatalkan.')); };
-    current.onerror = () => { clearTimeout(timeout); cancelDetection = null; current.terminate(); reject(new Error('Detektor lokal belum bisa berjalan di browser ini. Gunakan penempatan titik manual.')); };
+    const timeout = setTimeout(() => { cancelDetection = null; current.terminate(); reject(new Error('Detection took too long. Try again or place landmarks manually.')); }, 45000);
+    cancelDetection = () => { clearTimeout(timeout); reject(new Error('Detection canceled.')); };
+    current.onerror = () => { clearTimeout(timeout); cancelDetection = null; current.terminate(); reject(new Error('The local detector cannot run in this browser. Place landmarks manually.')); };
     current.onmessage = event => {
       if (event.data.id !== id) return;
+      if (event.data.stage) { onProgress?.(event.data.stage); return; }
       clearTimeout(timeout);
       cancelDetection = null;
-      if (event.data.error) reject(new Error('Detektor lokal tidak tersedia. Coba lagi atau gunakan titik manual.'));
+      if (event.data.error) reject(new Error('The local detector is unavailable. Try again or use manual landmarks.'));
       else resolve(event.data.landmarks);
       current.terminate(); if (worker === current) worker = null;
     };
     current.postMessage({ bitmap, id }, [bitmap]);
   });
-  if (landmarks.length > 1) throw new Error('Ada lebih dari satu wajah. Potong foto agar hanya satu wajah yang terlihat.');
-  if (!landmarks.length) throw new Error('Wajah depan belum terdeteksi. Gunakan foto lurus dengan cahaya merata, atau letakkan titik manual.');
+  if (landmarks.length > 1) throw new Error('More than one face was found. Crop the photo to show one face.');
+  if (!landmarks.length) throw new Error('No front face found. Try a straight, evenly lit photo, or place landmarks manually.');
+  onProgress?.('geometry');
   return Object.fromEntries(definitions.front.map(def => [def.id, { x: Math.max(0, Math.min(1, landmarks[0][def.index!].x)), y: Math.max(0, Math.min(1, landmarks[0][def.index!].y)) }]));
 }
 export const revokePhoto = (photo: Photo | undefined) => { if (photo) URL.revokeObjectURL(photo.url); };

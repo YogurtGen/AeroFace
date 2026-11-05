@@ -1,6 +1,6 @@
 # AeroFace
 
-Browser-only facial proportion studio with a liquid glass interface. Choose a front photo, a side photo, or both; inspect measurement points and visual explanations; export a personal report. Indonesian interface.
+Browser-only facial proportion studio with a liquid glass interface. Choose a front photo, a side photo, or both; inspect measurement points and visual explanations; export a personal report. English and Indonesian are available in Settings, including explanations, error messages and downloaded reports. English is the default.
 
 ## Run locally
 
@@ -31,13 +31,15 @@ Push to `main`, then choose **Settings → Pages → Source → GitHub Actions**
 - A bundled MediaPipe Face Landmarker detects front-view landmarks in a classic Web Worker, off the main UI thread. All model, WASM, script and font assets are served from this repository.
 - Side-view landmarks use guided manual placement. Automatic profile measurement is deliberately not claimed.
 - Every analysis requires explicit user confirmation of the landmark positions. Drag points or use arrow keys (Shift for larger steps).
+- In the measurement explorer, select a metric and tap an individual line on the photo or its legend. Each line explains its name, endpoints, in-photo pixel length, role as a measurement/reference, and relationship to the score. The symmetry axis is labeled as a reference rather than assigned a measured facial length. Profile lip offsets are drawn perpendicular to the nose–chin reference, matching the actual formula.
+- A local analysis overlay follows worker-reported model loading and detection stages. It does not use a timed fake percentage or delay the real result. Landmark, stage, report, guide and control transitions respect reduced motion; interface motion can also be disabled in Settings.
 - Deterministic geometric measurements and a disclosed, subjective scoring rubric. Front-only and profile-only results do not penalize a missing, unselected side.
 - PNG, JSON and print-to-PDF reports generated in the browser. Photo inclusion is off by default. Use the browser's **Save as PDF** destination in the print dialog.
 - Offline support after the status reads **Siap dipakai offline**. Service worker caching is restricted to the build's static application and model files.
 
 ## Privacy
 
-The app does not send photos, landmarks, or scores to any server. It does not use analytics, external fonts, cookies, localStorage, sessionStorage, IndexedDB, cloud inference, or user-data APIs. User-selected photos are decoded, resized (maximum edge 1600 px) and re-encoded in browser memory; application-created images do not retain the source EXIF metadata. Object URLs are revoked on replacement or session clearing, and the detector worker is terminated after detection. Clearing a session releases app references; it is not a promise of forensic erasure of browser or OS memory, and it does not delete the user's original files or explicitly downloaded reports.
+The app does not send photos, landmarks, or scores to any server. It does not use analytics, external fonts, cookies, localStorage, sessionStorage, IndexedDB, cloud inference, or user-data APIs. Language is represented by the URL fragment (`#lang=en` or `#lang=id`), which browsers do not send in HTTP requests, so it survives reload without persistent browser storage. User-selected photos are decoded, resized (maximum edge 1600 px) and re-encoded in browser memory; application-created images do not retain the source EXIF metadata. Object URLs are revoked on replacement or session clearing, and the detector worker is terminated after detection. Clearing a session releases app references; it is not a promise of forensic erasure of browser or OS memory, and it does not delete the user's original files or explicitly downloaded reports.
 
 The document's Content Security Policy restricts connections to the same origin. The classic detection worker also restricts its network APIs to local asset loading. No photo data is passed into a network call. GitHub Pages may record visitors' IP addresses for security: [GitHub Pages data collection](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection).
 

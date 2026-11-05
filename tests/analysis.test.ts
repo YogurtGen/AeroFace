@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateMetrics, rangeScore, totalScore, scoreMetrics, validatePoints, type Points } from '../src/analysis';
+import { measurementLines } from '../src/measurement-lines';
+import { translate } from '../src/i18n';
 
 const front: Points = { eyeLO: {x:.28,y:.37},eyeLI:{x:.4,y:.37},eyeRI:{x:.6,y:.37},eyeRO:{x:.72,y:.37},cheekL:{x:.19,y:.49},cheekR:{x:.81,y:.49},jawL:{x:.26,y:.7},jawR:{x:.74,y:.7},mouthL:{x:.4,y:.67},mouthR:{x:.6,y:.67},noseBase:{x:.5,y:.55},chin:{x:.5,y:.86} };
 const profile: Points = {nasion:{x:.56,y:.28},noseTip:{x:.74,y:.43},noseBase:{x:.62,y:.48},upperLip:{x:.65,y:.54},lowerLip:{x:.64,y:.59},chin:{x:.62,y:.7},jawAngle:{x:.34,y:.63},ramusTop:{x:.29,y:.4}};
@@ -41,4 +43,22 @@ test('profile measurements are finite, bounded and explicitly estimated; weights
     if(side==='profile') assert.ok(metrics.every(m=>m.estimated));
     assert.ok(scoreMetrics(metrics)>=0&&scoreMetrics(metrics)<=10);
   }
+});
+test('profile lip lines show the perpendicular distances actually used in the score',()=>{
+  const lines=measurementLines('profile',profile,800,1000),reference=lines.find(line=>line.id==='nose-chin-reference')!;
+  const offsets=lines.filter(line=>line.id.endsWith('lip-offset'));
+  let total=0;
+  for(const line of offsets){const dx=(line.to.x-line.from.x)*800,dy=(line.to.y-line.from.y)*1000,rx=(reference.to.x-reference.from.x)*800,ry=(reference.to.y-reference.from.y)*1000;assert.ok(Math.abs(dx*rx+dy*ry)<1e-8);total+=Math.hypot(dx,dy);}
+  const height=Math.hypot((profile.nasion.x-profile.chin.x)*800,(profile.nasion.y-profile.chin.y)*1000);
+  assert.ok(Math.abs(total/2/height-calculateMetrics('profile',profile,800,1000)[1].value)<1e-12);
+});
+test('every interactive line has unique identity, named endpoints and a real metric relationship',()=>{
+  for(const [side,points]of[['front',front],['profile',profile]]as const){const lines=measurementLines(side,points,800,1000),metrics=calculateMetrics(side,points,800,1000);assert.equal(new Set(lines.map(line=>line.id)).size,lines.length);assert.ok(lines.every(line=>line.fromLabel&&line.toLabel&&line.explanation&&(line.id==='centerline'||line.display.endsWith(' px'))&&line.metricIds.every(id=>metrics.some(metric=>metric.id===id))));}
+  assert.deepEqual(measurementLines('front',{},800,1000),[]);
+});
+test('both languages cover every measurement name, formula and explanation, with localized decimals',()=>{
+  for(const [side,points]of[['front',front],['profile',profile]]as const)for(const metric of calculateMetrics(side,points,800,1000))for(const field of[metric.name,metric.description,metric.formula,metric.reference])assert.notEqual(translate(field,'id'),field,`Missing Indonesian: ${field}`);
+  assert.equal(translate('1.25× eye width','id'),'1,25× lebar mata');
+  assert.equal(translate('Complete the landmark: nose base.','id'),'Lengkapi titik: dasar hidung.');
+  assert.equal(translate('Mulai analisis','en'),'Start analysis');
 });
