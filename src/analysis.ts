@@ -8,7 +8,21 @@ export type Metric = {
   score: number; weight: number; reference: string; formula: string;
   segments: string[][]; points: string[]; estimated?: boolean;
 };
-export const RUBRIC = 'AeroFace Geometry 1.0';
+export const RUBRIC = 'AeroFace Geometry 2.0';
+export const tiers = [
+  { label: 'Sub-3', min: 0, max: 3 },
+  { label: 'LTN', min: 3, max: 4 },
+  { label: 'MTN', min: 4, max: 6 },
+  { label: 'HTN', min: 6, max: 7 },
+  { label: 'Chadlite', min: 7, max: 8 },
+  { label: 'Chad', min: 8, max: 9 },
+  { label: 'Adam', min: 9, max: 9.5 },
+  { label: 'True Adam', min: 9.5, max: 10 },
+] as const;
+export function scoreTier(score:number) {
+  if(!Number.isFinite(score)||score<0||score>10) throw new Error('Invalid score.');
+  return tiers.find(tier=>score<tier.max)??tiers[tiers.length-1];
+}
 export const SIDE_LABEL: Record<Side, string> = { front: 'Front view', profile: 'Side view' };
 export const definitions: Record<Side, Definition[]> = {
   front: [
@@ -40,10 +54,9 @@ export const requiredSides = (mode: Mode): Side[] => mode === 'full' ? ['front',
 export const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
 const midpoint = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-export function rangeScore(value: number, low: number, high: number, falloff: number): number {
-  if (![value, low, high, falloff].every(Number.isFinite) || falloff <= 0 || high < low) throw new Error('Invalid measurement. Check the landmarks.');
-  const outside = Math.max(low - value, value - high, 0);
-  return Math.max(0, Math.min(10, 10 * (1 - outside / falloff)));
+export function targetScore(value: number, target: number, tolerance: number): number {
+  if (![value, target, tolerance].every(Number.isFinite) || tolerance <= 0) throw new Error('Invalid measurement. Check the landmarks.');
+  return 10 / (1 + ((value - target) / tolerance) ** 2);
 }
 export function angle(a: Point, b: Point, c: Point): number {
   const denominator = distance(a, b) * distance(c, b);
@@ -88,10 +101,10 @@ export function calculateMetrics(side: Side, points: Points, width: number, heig
     const lower = distance(p.noseBase, p.chin) / distance(eyes, p.chin);
     const jaw = distance(p.jawL, p.jawR) / faceWidth;
     return [
-      { id: 'symmetry', name: 'Facial symmetry', description: 'Five point pairs are compared across the eye-centered axis after correcting photo roll. Expression and perspective still affect the reading.', value: asymmetry, display: `${(asymmetry * 100).toFixed(1)}% deviation`, score: rangeScore(asymmetry, 0, 0.015, 0.12), weight: 35, reference: 'Deviation 0–1.5% of cheek width', formula: 'Average mirrored point deviation ÷ cheek width', segments: pairs, points: pairs.flat() },
-      { id: 'eyes', name: 'Eye spacing', description: 'The gap between the inner eye corners is compared with average eye width. This is a 2D proportion reading, not an eye-health assessment.', value: spacing, display: `${spacing.toFixed(2)}× eye width`, score: rangeScore(spacing, 0.85, 1.15, 0.9), weight: 25, reference: 'Ratio 0.85–1.15×', formula: 'Inner-eye gap ÷ average eye width', segments: [['eyeLO', 'eyeLI'], ['eyeLI', 'eyeRI'], ['eyeRI', 'eyeRO']], points: ['eyeLO', 'eyeLI', 'eyeRI', 'eyeRO'] },
-      { id: 'balance', name: 'Lower-face balance', description: 'Nose-base-to-chin length is compared with eye-line-to-chin length. Hairline is excluded so hair does not become a misleading landmark.', value: lower, display: `${(lower * 100).toFixed(1)}% lower section`, score: rangeScore(lower, 0.52, 0.65, 0.4), weight: 25, reference: 'Ratio 52–65%', formula: 'Nose base–chin ÷ eye midpoint–chin', segments: [['eyeLO', 'eyeRO'], ['noseBase', 'chin']], points: ['eyeLO', 'eyeRO', 'noseBase', 'chin'] },
-      { id: 'jaw', name: 'Visible jaw width', description: 'The width between the visible jaw corners is compared with cheek width. Hair, facial hair, and head rotation may obscure the contour.', value: jaw, display: `${jaw.toFixed(2)}× cheek width`, score: rangeScore(jaw, 0.65, 0.88, 0.6), weight: 15, reference: 'Ratio 0.65–0.88×', formula: 'Jaw-corner width ÷ cheek width', segments: [['cheekL', 'cheekR'], ['jawL', 'jawR'], ['jawL', 'chin', 'jawR']], points: ['cheekL', 'cheekR', 'jawL', 'jawR', 'chin'] },
+      { id: 'symmetry', name: 'Facial symmetry', description: 'Five point pairs are compared across the eye-centered axis after correcting photo roll. Expression and perspective still affect the reading.', value: asymmetry, display: `${(asymmetry * 100).toFixed(1)}% deviation`, score: targetScore(asymmetry, 0, 0.025), weight: 35, reference: 'Target deviation 0%; tolerance 2.5% of cheek width', formula: 'Average mirrored point deviation ÷ cheek width', segments: pairs, points: pairs.flat() },
+      { id: 'eyes', name: 'Eye spacing', description: 'The gap between the inner eye corners is compared with average eye width. This is a 2D proportion reading, not an eye-health assessment.', value: spacing, display: `${spacing.toFixed(2)}× eye width`, score: targetScore(spacing, 1, 0.2), weight: 25, reference: 'Target 1.00×; tolerance 0.20×', formula: 'Inner-eye gap ÷ average eye width', segments: [['eyeLO', 'eyeLI'], ['eyeLI', 'eyeRI'], ['eyeRI', 'eyeRO']], points: ['eyeLO', 'eyeLI', 'eyeRI', 'eyeRO'] },
+      { id: 'balance', name: 'Lower-face balance', description: 'Nose-base-to-chin length is compared with eye-line-to-chin length. Hairline is excluded so hair does not become a misleading landmark.', value: lower, display: `${(lower * 100).toFixed(1)}% lower section`, score: targetScore(lower, 0.585, 0.065), weight: 25, reference: 'Target 58.5%; tolerance 6.5 percentage points', formula: 'Nose base–chin ÷ eye midpoint–chin', segments: [['eyeLO', 'eyeRO'], ['noseBase', 'chin']], points: ['eyeLO', 'eyeRO', 'noseBase', 'chin'] },
+      { id: 'jaw', name: 'Visible jaw width', description: 'The width between the visible jaw corners is compared with cheek width. Hair, facial hair, and head rotation may obscure the contour.', value: jaw, display: `${jaw.toFixed(2)}× cheek width`, score: targetScore(jaw, 0.765, 0.115), weight: 15, reference: 'Target 0.765×; tolerance 0.115×', formula: 'Jaw-corner width ÷ cheek width', segments: [['cheekL', 'cheekR'], ['jawL', 'jawR'], ['jawL', 'chin', 'jawR']], points: ['cheekL', 'cheekR', 'jawL', 'jawR', 'chin'] },
     ];
   }
   const faceHeight = distance(p.nasion, p.chin);
@@ -100,16 +113,17 @@ export function calculateMetrics(side: Side, points: Points, width: number, heig
   const jawAngle = angle(p.ramusTop, p.jawAngle, p.chin);
   const ramus = distance(p.ramusTop, p.jawAngle) / distance(p.jawAngle, p.chin);
   return [
-    { id: 'profile-balance', name: 'Profile balance', description: 'The angle between the nose root, nose base, and chin on the outer contour. Profile landmarks are placed and confirmed by you.', value: convexity, display: `${convexity.toFixed(1)}°`, score: rangeScore(convexity, 155, 180, 65), weight: 30, reference: 'Angle 155–180°', formula: 'Nose root–nose base–chin angle', segments: [['nasion', 'noseBase', 'chin']], points: ['nasion', 'noseBase', 'chin'], estimated: true },
-    { id: 'lips', name: 'Lip–chin relation', description: 'The perpendicular distance of both lips from the nose-tip-to-chin line, divided by profile height. It does not define one ideal lip shape.', value: lips, display: `${(lips * 100).toFixed(1)}% profile height`, score: rangeScore(lips, 0, 0.065, 0.2), weight: 25, reference: 'Distance 0–6.5% of profile height', formula: 'Mean lip distance to nose–chin line ÷ profile height', segments: [['noseTip', 'chin'], ['upperLip', 'lowerLip']], points: ['noseTip', 'upperLip', 'lowerLip', 'chin'], estimated: true },
-    { id: 'profile-jaw', name: 'Jaw contour angle', description: 'The surface contour angle formed by the point near the ear, jaw corner, and chin. This is not an anatomical gonial bone-angle measurement.', value: jawAngle, display: `${jawAngle.toFixed(1)}°`, score: rangeScore(jawAngle, 110, 135, 65), weight: 25, reference: 'Contour angle 110–135°', formula: 'Upper segment–jaw corner–chin angle', segments: [['ramusTop', 'jawAngle', 'chin']], points: ['ramusTop', 'jawAngle', 'chin'], estimated: true },
-    { id: 'ramus', name: 'Visual ramus ratio', description: 'The visible vertical contour near the ear is compared with the jaw-to-chin segment. A photo does not reveal ramus bone boundaries; this is a 2D surface estimate.', value: ramus, display: `${ramus.toFixed(2)}× jaw segment`, score: rangeScore(ramus, 0.45, 0.85, 0.9), weight: 20, reference: 'Contour ratio 0.45–0.85×', formula: 'Upper segment–jaw corner ÷ jaw corner–chin', segments: [['ramusTop', 'jawAngle'], ['jawAngle', 'chin']], points: ['ramusTop', 'jawAngle', 'chin'], estimated: true },
+    { id: 'profile-balance', name: 'Profile balance', description: 'The angle between the nose root, nose base, and chin on the outer contour. Profile landmarks are placed and confirmed by you.', value: convexity, display: `${convexity.toFixed(1)}°`, score: targetScore(convexity, 167.5, 12.5), weight: 30, reference: 'Target 167.5°; tolerance 12.5°', formula: 'Nose root–nose base–chin angle', segments: [['nasion', 'noseBase', 'chin']], points: ['nasion', 'noseBase', 'chin'], estimated: true },
+    { id: 'lips', name: 'Lip–chin relation', description: 'The perpendicular distance of both lips from the nose-tip-to-chin line, divided by profile height. It does not define one ideal lip shape.', value: lips, display: `${(lips * 100).toFixed(1)}% profile height`, score: targetScore(lips, 0.025, 0.035), weight: 25, reference: 'Target 2.5%; tolerance 3.5 percentage points', formula: 'Mean lip distance to nose–chin line ÷ profile height', segments: [['noseTip', 'chin'], ['upperLip', 'lowerLip']], points: ['noseTip', 'upperLip', 'lowerLip', 'chin'], estimated: true },
+    { id: 'profile-jaw', name: 'Jaw contour angle', description: 'The surface contour angle formed by the point near the ear, jaw corner, and chin. This is not an anatomical gonial bone-angle measurement.', value: jawAngle, display: `${jawAngle.toFixed(1)}°`, score: targetScore(jawAngle, 122.5, 12.5), weight: 25, reference: 'Target 122.5°; tolerance 12.5°', formula: 'Upper segment–jaw corner–chin angle', segments: [['ramusTop', 'jawAngle', 'chin']], points: ['ramusTop', 'jawAngle', 'chin'], estimated: true },
+    { id: 'ramus', name: 'Visual ramus ratio', description: 'The visible vertical contour near the ear is compared with the jaw-to-chin segment. A photo does not reveal ramus bone boundaries; this is a 2D surface estimate.', value: ramus, display: `${ramus.toFixed(2)}× jaw segment`, score: targetScore(ramus, 0.65, 0.2), weight: 20, reference: 'Target 0.65×; tolerance 0.20×', formula: 'Upper segment–jaw corner ÷ jaw corner–chin', segments: [['ramusTop', 'jawAngle'], ['jawAngle', 'chin']], points: ['ramusTop', 'jawAngle', 'chin'], estimated: true },
   ];
 }
 export const roundedScore = (score: number) => Math.round((score + Number.EPSILON) * 10) / 10;
 export const scoreMetrics = (metrics: Metric[]) => {
-  if (!metrics.length || metrics.some(metric => !Number.isFinite(metric.score) || metric.weight <= 0)) throw new Error('Measurements are incomplete.');
-  return roundedScore(metrics.reduce((sum, metric) => sum + metric.score * metric.weight, 0) / metrics.reduce((sum, metric) => sum + metric.weight, 0));
+  if (!metrics.length || metrics.some(metric => !Number.isFinite(metric.score) || metric.score < 0 || metric.score > 10 || !Number.isFinite(metric.weight) || metric.weight <= 0)) throw new Error('Measurements are incomplete.');
+  if(metrics.some(metric=>metric.score===0)) return 0;
+  return roundedScore(Math.exp(metrics.reduce((sum, metric) => sum + Math.log(metric.score) * metric.weight, 0) / metrics.reduce((sum, metric) => sum + metric.weight, 0)));
 };
 export function totalScore(mode: Mode, scores: Partial<Record<Side, number>>): number | null {
   const values = requiredSides(mode).map(side => scores[side]);

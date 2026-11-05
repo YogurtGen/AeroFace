@@ -18,13 +18,17 @@ Glass is restricted to navigation, mode selection and floating explanatory contr
 
 The user requested a more expressive motion layer. The first selection view has a one-time staggered arrival, a pointer-responsive guide illustration, and interactive anatomy highlights. Stage changes use interruptible native View Transitions where available. Buttons, upload cards, selected lines, metric explanations, and report sections have their own feedback. Actual user-photo geometry remains stable while it is read or edited.
 
-Button feedback uses 160 ms, the mode indicator uses a retargetable 240 ms transform transition, and measurement lines appear in a 220 ms opacity transition. The initial onboarding choreography uses a longer 600 ms budget because it is seen once. Blur is static rather than animated. Inference runs in a worker; its model-loading and detection messages drive the scanning overlay. No fake timed percentage or artificial minimum delay is used. Keyboard interaction disables decorative transitions, and Settings offers a motion toggle in addition to system reduced-motion support.
+Button feedback uses 160 ms, the mode indicator uses a retargetable 240 ms transform transition, and measurement lines appear in a 220 ms opacity transition. The initial onboarding choreography uses a longer 600 ms budget because it is seen once. Blur is static rather than animated. Inference runs in a worker; its model-loading and detection messages drive the scanning overlay. At the user's request, scanning now has a minimum three-second presentation. When inference finishes early, the status explicitly changes to visualization; no fake accuracy or percentage is shown. Session clearing aborts the pending reveal. Keyboard interaction disables decorative transitions, and Settings offers a motion toggle in addition to system reduced-motion support.
 
 ## Language and line explanations
 
 English is the default, with English/Indonesia controls in Settings. Copy, landmark guidance, metric descriptions, formulas, errors, print, PNG and JSON reports follow the selected language. A URL fragment retains the language without a server request or browser storage.
 
 Every displayed measurement/reference segment has an explicit identity and named endpoints. Selecting a line on the photo, using its keyboard-accessible SVG control, or choosing its legend opens its explanation and score relationship. Dashed marks distinguish reference lines. Lip-offset lines are perpendicular projections onto the nose–chin line, matching the scoring calculation. The symmetry axis has a reference label instead of an arbitrary pixel-length claim.
+
+The shared profile illustration now has a defined nose, lips, chin, ear and jaw contour. Photo-help illustrations crop to the head, and stack vertically on phones. Small photo inputs remain usable with a visible resolution warning instead of a hard rejection.
+
+Geometry 2.0 replaces the old perfect-score intervals with continuous target-distance curves and uses a weighted geometric mean within each view. The report discloses community-inspired tier bands and the overlapping Sub-5 tag in both languages. Those labels describe the app's selected geometry rubric; they do not establish PSL validity, population rank or equivalence to a celebrity. Four measurements per view do not assess facial fullness, skin texture or overall attractiveness.
 
 ## Visual verification
 

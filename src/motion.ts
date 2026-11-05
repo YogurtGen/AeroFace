@@ -1,4 +1,14 @@
 import { useEffect } from 'react';
+
+export function finishScanAnimation(startedAt:number, signal:AbortSignal):Promise<void> {
+  const remaining=3000-(performance.now()-startedAt);
+  if(remaining<=0||signal.aborted)return Promise.resolve();
+  return new Promise(resolve=>{
+    const done=()=>{clearTimeout(timer);signal.removeEventListener('abort',done);resolve();};
+    const timer=setTimeout(done,remaining);
+    signal.addEventListener('abort',done,{once:true});
+  });
+}
 export function useIntroMotion() {
   useEffect(()=>{
     if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;

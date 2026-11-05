@@ -43,6 +43,12 @@ try {
     await page.getByRole('button',{name:'How scoring works'}).click();assert.match(await page.locator('dialog').innerText(),/not scientifically validated/);await page.keyboard.press('Escape');
     await page.getByRole('button',{name:'Reduce transparency'}).click();assert.equal(await page.locator('html').getAttribute('data-glass'),'off');await page.getByRole('button',{name:'Enable liquid glass'}).click();
   });
+  await check('profile guide has a readable head crop at desktop and mobile sizes',async()=>{
+    await page.getByRole('button',{name:'Open photo guide'}).click();
+    assert.equal(await page.getByRole('img',{name:'Side face guide illustration'}).getAttribute('viewBox'),'85 62 280 315');
+    for(const width of[1440,390]){await page.setViewportSize({width,height:width===390?844:1000});await page.locator('dialog').screenshot({path:`test-results/${label}-guide-${width}.png`});assert.ok(await page.evaluate(()=>document.querySelector('dialog').scrollWidth<=document.querySelector('dialog').clientWidth+1));}
+    await page.getByRole('button',{name:'Close dialog'}).click();await page.setViewportSize({width:1440,height:1000});
+  });
   await check('English and Indonesian settings apply to the UI and survive reload without storage',async()=>{
     assert.equal(await page.locator('html').getAttribute('lang'),'en');
     await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'ID Indonesia'}).click();assert.equal(await page.locator('html').getAttribute('lang'),'id');await page.getByRole('button',{name:'Tutup jendela'}).click();await page.getByRole('button',{name:'Mulai analisis'}).waitFor();
@@ -54,12 +60,27 @@ try {
   await check('invalid photo is rejected and does not enable analysis',async()=>{
     await page.getByTestId('upload-front').setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('not a photo')});await page.getByRole('alert').waitFor();assert.match(await page.getByRole('alert').innerText(),/JPG/);assert.equal(await page.getByRole('button',{name:'Start analysis'}).isDisabled(),true);await page.getByRole('button',{name:'Close message'}).click();
   });
+  await check('small JPEGs at the reported sizes are accepted without upscaling',async()=>{
+    for(const [width,height,side]of[[184,320,'profile'],[236,354,'front']]){
+      const data=await page.evaluate(({width,height})=>{const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;canvas.getContext('2d').fillRect(0,0,width,height);return canvas.toDataURL('image/jpeg').split(',')[1];},{width,height});
+      await page.getByTestId(`upload-${side}`).setInputFiles({name:'small.jpg',mimeType:'image/jpeg',buffer:Buffer.from(data,'base64')});await page.locator('.upload-quality-note').filter({hasText:`${width} × ${height}`}).waitFor();
+      const img=page.locator(`.upload-card:has([data-testid="upload-${side}"]) img`);assert.deepEqual(await img.evaluate(image=>[image.naturalWidth,image.naturalHeight]),[width,height]);
+    }
+    assert.equal(await page.getByRole('button',{name:'Start analysis'}).isEnabled(),true);await page.getByRole('button',{name:'Clear session'}).click();
+  });
   await check('profile-only guided placement creates its own report',async()=>{
     await page.getByRole('group',{name:'Analysis mode'}).getByRole('button').nth(1).click();await upload('profile',fixture);await page.getByRole('button',{name:'Start analysis'}).click();await page.locator('#point-selector').waitFor();await placePoints(profilePoints);await page.getByRole('button',{name:'Confirm & create report'}).click();await page.getByRole('heading',{name:'Your face, in perspective.'}).waitFor();assert.match(await page.locator('.report-summary').innerText(),/Not analyzed/);assert.equal(await page.locator('.report-side').count(),1);assert.match(await page.locator('.report-side').innerText(),/2D estimate/);await page.screenshot({path:`test-results/${label}-profile-report.png`,fullPage:true});
+  });
+  await check('report tier boundaries and limitations remain visible in both languages',async()=>{
+    await page.locator('.tier-scale summary').click();assert.equal(await page.locator('.tier-band-list>div').count(),8);assert.equal(await page.locator('.tier-band-list .current strong').innerText(),await page.locator('.tier-badge').innerText());
+    assert.match(await page.locator('.report-context').innerText(),/cannot establish celebrity equivalence/);
+    await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'ID Indonesia'}).click();await page.getByRole('button',{name:'Tutup jendela'}).click();assert.match(await page.locator('.tier-scale').innerText(),/bukan rating PSL/);await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:`test-results/${label}-tier-id-mobile.png`,fullPage:true});
+    await page.getByRole('button',{name:'Pengaturan',exact:true}).click();await page.getByRole('button',{name:'EN English'}).click();await page.getByRole('button',{name:'Close dialog'}).click();await page.setViewportSize({width:1440,height:1000});await page.locator('.tier-scale summary').click();
   });
   await check('PNG and JSON downloads and private print defaults',async()=>{
     assert.equal(await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).isChecked(),false);
     let downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Data',exact:true}).click();let download=await downloadPromise;assert.match(download.suggestedFilename(),/\.json$/);await download.saveAs(`test-results/${label}-report.json`);
+    const {readFile}=await import('node:fs/promises');const data=JSON.parse(await readFile(`test-results/${label}-report.json`,'utf8'));assert.equal(data.tier,await page.locator('.tier-badge').innerText());assert.equal(data.score,data.sides.profile.score);assert.equal(data.tierBands.length,8);assert.match(data.rubric,/2.0/);
     downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Download image'}).click();download=await downloadPromise;assert.match(download.suggestedFilename(),/\.png$/);await download.saveAs(`test-results/${label}-report.png`);
     assert.equal(await page.locator('.print-report img').count(),0);await page.emulateMedia({media:'print'});await page.pdf({path:`test-results/${label}-report.pdf`,printBackground:true});await page.emulateMedia({media:'screen'});
     await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).check();assert.equal(await page.locator('.print-report img').count(),1);
@@ -88,7 +109,7 @@ try {
     const response=await fetch('https://storage.googleapis.com/mediapipe-assets/portrait.jpg');assert.equal(response.ok,true);portrait=Buffer.from(await response.arrayBuffer());await writeFile('test-results/fixture-portrait.jpg',portrait);
     await page.getByRole('group',{name:'Analysis mode'}).getByRole('button').nth(0).click();await upload('front',portrait,'image/jpeg','portrait.jpg');
     await page.evaluate(()=>{window.__analysisPhases=[];const observer=new MutationObserver(()=>{const node=document.querySelector('.analysis-visuals');if(node)window.__analysisPhases.push(node.dataset.phase);});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['data-phase']});window.__phaseObserver=observer;});
-    await page.getByRole('button',{name:'Start analysis'}).click();await page.waitForFunction(()=>document.querySelectorAll('.measure-point').length===12,{},{timeout:60000});assert.equal(await page.locator('.measure-point').count(),12);const phases=await page.evaluate(()=>{window.__phaseObserver.disconnect();return window.__analysisPhases;});assert.ok(phases.length>0,'actual detector work should expose its processing phase');console.log('Detector phases:',[...new Set(phases)].join(', '));
+    const startedAt=Date.now();await page.getByRole('button',{name:'Start analysis'}).click();await page.waitForFunction(()=>document.querySelectorAll('.measure-point').length===12,{},{timeout:60000});assert.ok(Date.now()-startedAt>=2950,'the scan presentation should last at least three seconds');assert.equal(await page.locator('.measure-point').count(),12);const phases=await page.evaluate(()=>{window.__phaseObserver.disconnect();return window.__analysisPhases;});assert.ok(phases.includes('visualizing'),'completed detection should be labeled as visualization');console.log('Detector phases:',[...new Set(phases)].join(', '));
     await page.getByRole('button',{name:'Confirm & create report'}).click();await page.getByRole('heading',{name:'Your face, in perspective.'}).waitFor();assert.equal(await page.locator('.report-side').count(),1);await page.screenshot({path:`test-results/${label}-front-report.png`,fullPage:true});
   });
   await check('adding the other side creates an equal-weight combined report',async()=>{
@@ -101,6 +122,9 @@ try {
   });
   await check('rotation and crop invalidate prior landmarks',async()=>{
     await page.getByRole('button',{name:'Review again'}).click();await page.getByRole('button',{name:'Rotate',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.measure-point').length===0);assert.equal(await page.getByRole('button',{name:'Confirm & create report'}).isDisabled(),true);await page.getByRole('button',{name:'Crop 3:4'}).click();await page.waitForTimeout(250);assert.equal(await page.locator('.measure-point').count(),0);
+  });
+  await check('clearing during the visualization hold cancels pending landmarks',async()=>{
+    await page.getByRole('button',{name:'Clear session'}).click();await upload('front',portrait,'image/jpeg','portrait.jpg');await page.getByRole('button',{name:'Start analysis'}).click();await page.locator('.analysis-visuals[data-phase="visualizing"]').waitFor({timeout:60000});await page.getByRole('button',{name:'Clear session'}).click();await page.waitForTimeout(3200);assert.equal(await page.locator('.measure-point').count(),0);assert.equal(await page.locator('.upload-card.has-photo').count(),0);assert.equal(await page.locator('.analysis-visuals').count(),0);assert.equal(await page.getByRole('button',{name:'Start analysis'}).isDisabled(),true);
   });
 } finally {
   await writeFile(`test-results/${label}-results.json`,JSON.stringify({base,failures,pageErrors,external,nonGet},null,2));

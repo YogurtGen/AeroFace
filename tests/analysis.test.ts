@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateMetrics, rangeScore, totalScore, scoreMetrics, validatePoints, type Points } from '../src/analysis';
+import { calculateMetrics, targetScore, totalScore, scoreMetrics, scoreTier, validatePoints, type Points } from '../src/analysis';
 import { measurementLines } from '../src/measurement-lines';
 import { translate } from '../src/i18n';
 
@@ -12,6 +12,28 @@ test('a symmetric face has zero mirror deviation and moving one landmark increas
   const changed = calculateMetrics('front', {...front, mouthR:{x:.64,y:.7}}, 800, 1000)[0];
   assert.ok(changed.value > baseline.value);
   assert.ok(changed.score < baseline.score);
+});
+test('target scoring has no perfect-score plateau and loses half its score at one tolerance',()=>{
+  assert.equal(targetScore(1,1,.2),10);
+  assert.ok(targetScore(1.01,1,.2)<10);
+  assert.ok(targetScore(1.1,1,.2)>targetScore(1.2,1,.2));
+  assert.ok(Math.abs(targetScore(1.2,1,.2)-5)<1e-10);
+  assert.ok(Math.abs(targetScore(.8,1,.2)-5)<1e-10);
+  assert.ok(targetScore(1.15,1,.2)<7,'the old reference interval edge must no longer receive 10');
+  assert.throws(()=>targetScore(1,1,0));
+});
+test('view aggregation makes a weak measurement count and rejects invalid scores or weights',()=>{
+  const metrics=calculateMetrics('front',front,800,1000).map(metric=>({...metric,score:10,weight:25}));
+  assert.equal(scoreMetrics(metrics),10);
+  metrics[0].score=1;
+  assert.equal(scoreMetrics(metrics),5.6);
+  metrics[0].score=0;assert.equal(scoreMetrics(metrics),0);
+  assert.throws(()=>scoreMetrics([{...metrics[0],score:11}]));
+  assert.throws(()=>scoreMetrics([{...metrics[0],weight:NaN}]));
+});
+test('tiers have explicit non-overlapping boundaries on the displayed 0–10 scale',()=>{
+  for(const [score,label]of[[0,'Sub-3'],[2.9,'Sub-3'],[3,'LTN'],[4,'MTN'],[5,'MTN'],[6,'HTN'],[7,'Chadlite'],[8,'Chad'],[9,'Adam'],[9.5,'True Adam'],[10,'True Adam']]as const)assert.equal(scoreTier(score).label,label);
+  for(const value of[-1,10.1,NaN,Infinity])assert.throws(()=>scoreTier(value));
 });
 test('ratios are invariant to resolution, and use actual image aspect ratio', () => {
   const first = calculateMetrics('front', front, 800, 1000);
@@ -33,7 +55,7 @@ test('reject missing, invalid, reversed and degenerate geometry instead of inven
   assert.throws(()=>calculateMetrics('front', {...front, chin:front.noseBase}, 800, 1000));
   assert.throws(()=>calculateMetrics('front', {...front, eyeLO:front.eyeRO}, 800, 1000));
   assert.throws(()=>calculateMetrics('profile', {...profile, ramusTop:profile.jawAngle}, 800, 1000));
-  assert.throws(()=>rangeScore(NaN,0,1,1));
+  assert.throws(()=>targetScore(NaN,0,1));
 });
 test('profile measurements are finite, bounded and explicitly estimated; weights sum to 100', () => {
   for (const [side, points] of [['front',front],['profile',profile]] as const) {

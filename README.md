@@ -32,7 +32,7 @@ Push to `main`, then choose **Settings → Pages → Source → GitHub Actions**
 - Side-view landmarks use guided manual placement. Automatic profile measurement is deliberately not claimed.
 - Every analysis requires explicit user confirmation of the landmark positions. Drag points or use arrow keys (Shift for larger steps).
 - In the measurement explorer, select a metric and tap an individual line on the photo or its legend. Each line explains its name, endpoints, in-photo pixel length, role as a measurement/reference, and relationship to the score. The symmetry axis is labeled as a reference rather than assigned a measured facial length. Profile lip offsets are drawn perpendicular to the nose–chin reference, matching the actual formula.
-- A local analysis overlay follows worker-reported model loading and detection stages. It does not use a timed fake percentage or delay the real result. Landmark, stage, report, guide and control transitions respect reduced motion; interface motion can also be disabled in Settings.
+- A local analysis overlay follows worker-reported model loading and detection stages. It uses a minimum three-second scan presentation; when detection finishes early, the overlay explicitly switches to visualization. Clearing the session cancels the reveal. No fake accuracy or percentage is shown. Landmark, stage, report, guide and control transitions respect reduced motion; interface motion can also be disabled in Settings.
 - Deterministic geometric measurements and a disclosed, subjective scoring rubric. Front-only and profile-only results do not penalize a missing, unselected side.
 - PNG, JSON and print-to-PDF reports generated in the browser. Photo inclusion is off by default. Use the browser's **Save as PDF** destination in the print dialog.
 - Offline support after the status reads **Siap dipakai offline**. Service worker caching is restricted to the build's static application and model files.
@@ -47,11 +47,15 @@ To audit: open DevTools → Network, wait for app/model loading, select photos, 
 
 ## Measurement and score limitations
 
-This is **not an objective attractiveness model or medical instrument**. `AeroFace Geometry 1.0` is a transparent product-design rubric, not a scientifically validated beauty scale. Pose, lens perspective, expression, landmark placement, occlusion and photo quality affect the outputs. Quality checks are rough, photo-wide heuristics and are separate from proportion scores; they do not certify a suitable pose or sufficient facial detail.
+This is **not an objective attractiveness model or medical instrument**. `AeroFace Geometry 2.0` is a transparent product-design rubric, not a scientifically validated beauty scale. Pose, lens perspective, expression, landmark placement, occlusion and photo quality affect the outputs. Quality checks are rough, photo-wide heuristics and are separate from proportion scores; they do not certify a suitable pose or sufficient facial detail.
 
-All distances use pixel coordinates with the actual photo aspect ratio, then normalize to other visible facial distances. There is no claim of real-world millimeters or calibrated 3D reconstruction. The profile ramus and jaw metrics measure **visible surface contours**, not anatomical bone boundaries. Their reference intervals and weights are heuristic choices, not clinical standards or universally ideal facial features.
+All distances use pixel coordinates with the actual photo aspect ratio, then normalize to other visible facial distances. There is no claim of real-world millimeters or calibrated 3D reconstruction. The profile ramus and jaw metrics measure **visible surface contours**, not anatomical bone boundaries. Their targets, tolerances and weights are heuristic choices, not clinical standards or universally ideal facial features.
 
-For each metric, the score is 10 inside the displayed reference interval. Outside it, score is `max(0, 10 * (1 - distance_to_interval / falloff))`. The complete intervals, falloffs, weights, definitions, and formula implementations are in `src/analysis.ts`. A side score is the weighted average of its metrics. Full mode averages the two side scores equally.
+Each metric now has one target instead of a perfect-score interval: `score = 10 / (1 + ((value - target) / tolerance)^2)`. One tolerance from the target gives 5; scores decline continuously in either direction. The disclosed targets and tolerances are heuristic product choices, not fitted population data. Each view uses a weighted geometric mean so one high measurement cannot compensate as easily for a weak one. Full mode averages the two view scores equally. Complete targets, tolerances, weights and formulas are in `src/analysis.ts`.
+
+Reports include community-inspired labels on **AeroFace’s own 0–10 geometry scale**: Sub-3 [0,3), LTN [3,4), MTN [4,6), HTN [6,7), Chadlite [7,8), Chad [8,9), Adam [9,9.5), True Adam [9.5,10]. Sub-5 is an overlapping tag for any score below 5. These are not validated PSL ratings, population percentiles, or equivalence to celebrities. Only four proportions per view are scored; skin texture, facial fullness and overall attractiveness are not assessed.
+
+Small images are accepted with a warning below 256 pixels on the shortest edge. Images are never upscaled; lower resolution can reduce landmark reliability.
 
 ## Dependencies and licenses
 

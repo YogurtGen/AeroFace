@@ -9,7 +9,6 @@ export async function readPhoto(file: Blob): Promise<Photo> {
   if (file.size > 20 * 1024 * 1024) throw new Error('Photos can be up to 20 MB. Choose a smaller version.');
   let bitmap: ImageBitmap;
   try { bitmap = await createImageBitmap(file); } catch { throw new Error('Could not read this photo. Try saving it again as JPG or PNG.'); }
-  if (Math.min(bitmap.width, bitmap.height) < 256) { bitmap.close(); throw new Error('This photo is too small. Use at least 256 pixels on its shortest edge.'); }
   const factor = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * factor); canvas.height = Math.round(bitmap.height * factor);
@@ -29,6 +28,7 @@ async function photoFromCanvas(canvas: HTMLCanvasElement): Promise<Photo> {
   }
   light /= 96 * 96; detail /= 96 * 96;
   const warnings: string[] = [];
+  if (Math.min(canvas.width, canvas.height) < 256) warnings.push('This photo has a low resolution. You can use it, but review the landmarks carefully.');
   if (light < 50) warnings.push('Lighting looks dark. Try an evenly lit photo.');
   if (light > 230) warnings.push('Lighting looks very bright. Make sure the facial contour is still visible.');
   if (detail < 2) warnings.push('Photo detail looks low. Check focus and sharpness.');
@@ -53,7 +53,7 @@ let worker: Worker | null = null;
 let cancelDetection: (() => void) | null = null;
 let requestId = 0;
 export function stopDetector() { cancelDetection?.(); cancelDetection = null; worker?.terminate(); worker = null; }
-export type DetectionPhase = 'runtime'|'model'|'detecting'|'geometry';
+export type DetectionPhase = 'runtime'|'model'|'detecting'|'geometry'|'visualizing';
 export async function detectFront(photo: Photo, onProgress?: (phase:DetectionPhase)=>void): Promise<Points> {
   stopDetector();
   onProgress?.('runtime');
