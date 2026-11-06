@@ -88,8 +88,9 @@ try {
   });
   await check('report tier boundaries and limitations remain visible in both languages',async()=>{
     await page.locator('.tier-scale summary').click();assert.equal(await page.locator('.tier-band-list>div').count(),8);assert.equal(await page.locator('.tier-band-list .current').count(),0);assert.equal(await page.locator('.tier-band-list .face-illustration').count(),8);assert.equal(await page.locator('.tier-badge').count(),0);
+    assert.equal(await page.locator('.sub-five-guide .face-illustration').count(),3);assert.match(await page.locator('.sub-five-guide').innerText(),/4\.7 = MTN \+ Sub-5; 5\.3 = MTN/);assert.equal(await page.locator('.sub-five-guide.current').count(),0);
     assert.match(await page.locator('.report-context').innerText(),/not validated as a PSL scale/);
-    await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'ID Indonesia'}).click();await page.getByRole('button',{name:'Tutup jendela'}).click();assert.match(await page.locator('.tier-scale').innerText(),/bukan rating PSL/);await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:`test-results/${label}-tier-id-mobile.png`,fullPage:true,animations:"disabled"});
+    await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'ID Indonesia'}).click();await page.getByRole('button',{name:'Tutup jendela'}).click();assert.match(await page.locator('.tier-scale').innerText(),/bukan rating PSL/);assert.match(await page.locator('.sub-five-guide').innerText(),/4,7 = MTN \+ Sub-5; 5,3 = MTN/);await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:`test-results/${label}-tier-id-mobile.png`,fullPage:true,animations:"disabled"});
     await page.getByRole('button',{name:'Pengaturan',exact:true}).click();await page.getByRole('button',{name:'EN English'}).click();await page.getByRole('button',{name:'Close dialog'}).click();await page.setViewportSize({width:1440,height:1000});await page.locator('.tier-scale summary').click();
   });
   await check('PNG and JSON downloads and private print defaults',async()=>{
@@ -132,7 +133,9 @@ try {
     const heading=await page.locator('.headline-score').innerText();
     await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('group',{name:'Rating reference'}).getByRole('button',{name:'Woman',exact:true}).click();await page.getByRole('button',{name:'Close dialog'}).click();assert.equal(await page.locator('.headline-score').innerText(),heading);
     const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Data',exact:true}).click();const download=await pending;const {readFile}=await import('node:fs/promises');const data=JSON.parse(await readFile(await download.path(),'utf8'));assert.equal(data.reference,'woman');assert.equal(data.tier,await page.locator('.tier-badge').innerText());assert.equal(data.appearance.model,'FaceONNX ResNet-18');assert.ok(Number.isFinite(data.appearance.raw));assert.equal(data.score,Math.round(Math.max(0,Math.min(10,data.appearance.raw*2))*10)/10);assert.equal(data.geometryScore,data.sides.front.score);
-    await page.locator('.tier-scale summary').click();assert.match(await page.locator('.tier-band-list').innerText(),/True Eve/);await page.locator('.tier-scale summary').click();
+    assert.equal(data.frontDetails.length,3);assert.ok(data.frontDetails.every(item=>item.scored===false&&Number.isFinite(item.value)));assert.equal(await page.locator('.report-side .front-details dd').count(),3);assert.equal(await page.locator('.print-report .front-details dd').count(),3);
+    assert.equal(await page.locator('.report-summary .tier-near').count(),data.nearbyTier?1:0);assert.equal(await page.locator('.print-report .tier-near').count(),data.nearbyTier?1:0);if(data.nearbyTier)assert.ok((await page.locator('.report-summary .tier-near').innerText()).includes(data.nearbyTier.label));
+    await page.locator('.tier-scale summary').click();assert.match(await page.locator('.tier-band-list').innerText(),/True Eve/);assert.match(await page.locator('.sub-five-guide').innerText(),/4\.7 = MTB \+ Sub-5; 5\.3 = MTB/);await page.locator('.tier-scale summary').click();
     await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('group',{name:'Rating reference'}).getByRole('button',{name:'Man',exact:true}).click();await page.getByRole('button',{name:'Close dialog'}).click();
     await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).check();
     await page.emulateMedia({media:'print'});await page.pdf({path:`test-results/${label}-ai-report.pdf`,printBackground:true,preferCSSPageSize:true});await page.emulateMedia({media:'screen'});
@@ -145,6 +148,7 @@ try {
     assert.equal(await page.locator('.print-report table').count(),2);await downloadImage('full-photo-report',true);
     await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'ID Indonesia'}).click();await page.getByRole('button',{name:'Tutup jendela'}).click();
     await page.getByRole('checkbox',{name:'Sertakan foto & garis ukur'}).uncheck();await page.setViewportSize({width:390,height:844});
+    assert.match(await page.locator('.report-side .front-details').innerText(),/Kemiringan sudut mata kiri/);
     await page.waitForFunction(()=>document.querySelector('.site-footer')?.textContent.includes('Siap dipakai offline'),{},{timeout:90000});
     await context.setOffline(true);
     try{await downloadImage('full-private-id-mobile',false,'Unduh gambar');}finally{await context.setOffline(false);}

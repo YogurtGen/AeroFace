@@ -60,6 +60,8 @@ The appearance estimate uses the publisher's BGR preprocessing: 224 × 224 input
 
 Only a successful front appearance estimate receives a community-inspired tier: Sub-3 [0,3), LTN [3,4), MTN [4,6), HTN [6,7), Chadlite [7,8), Chad [8,9), Adam [9,9.5), True Adam [9.5,10]. Woman terminology is Sub-3, LTB, MTB, HTB, Stacylite, Stacy, Eve, True Eve at the same boundaries. Sub-5 overlaps every score below 5. These are app bands, not validated PSL ratings, population percentiles or celebrity equivalence. The publisher provides no documented training-data composition, subgroup accuracy or separate man/woman calibration. The model can reflect lighting, pose and training-data biases; adding AI does not establish objective correctness.
 
+The illustrated guide explains Sub-5 separately, including its overlap with the lower part of MTN/MTB. A “Near” note means the estimate is within 0.2 points of the next app band, not a confidence interval. Additional front readings show head-roll-corrected eye-corner tilt on each side and mouth-to-cheek width. These 2D values are unscored context, included in the screen, PDF, PNG and JSON reports. They do not provide skin, hair-density, facial-fat or population-percentile estimates.
+
 Lines and radar charts explain geometry, not the neural model's decision. Tier outlines are illustrations rather than reference faces or anatomical templates for a score. JSON schema 3 includes separate appearance and geometry values, reference choice, raw appearance output and contextual contour angles. If appearance is unavailable, top-level appearance score and tier are null.
 
 

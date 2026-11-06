@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateMetrics, targetScore, totalScore, scoreMetrics, scoreTier, validatePoints, type Points } from '../src/analysis';
+import { calculateMetrics, targetScore, totalScore, scoreMetrics, scoreTier, validatePoints, frontDetails, nearbyTier, type Points } from '../src/analysis';
 import { measurementLines } from '../src/measurement-lines';
 import { translate } from '../src/i18n';
 
@@ -32,7 +32,7 @@ test('view aggregation makes a weak measurement count and rejects invalid scores
   assert.throws(()=>scoreMetrics([{...metrics[0],weight:NaN}]));
 });
 test('tiers have explicit non-overlapping boundaries on the displayed 0–10 scale',()=>{
-  for(const [score,label]of[[0,'Sub-3'],[2.9,'Sub-3'],[3,'LTN'],[4,'MTN'],[5,'MTN'],[6,'HTN'],[7,'Chadlite'],[8,'Chad'],[9,'Adam'],[9.5,'True Adam'],[10,'True Adam']]as const)assert.equal(scoreTier(score).label,label);
+  for(const [score,label]of[[0,'Sub-3'],[2.9,'Sub-3'],[3,'LTN'],[4,'MTN'],[4.7,'MTN'],[5,'MTN'],[5.3,'MTN'],[6,'HTN'],[7,'Chadlite'],[8,'Chad'],[9,'Adam'],[9.5,'True Adam'],[10,'True Adam']]as const)assert.equal(scoreTier(score).label,label);
   for(const value of[-1,10.1,NaN,Infinity])assert.throws(()=>scoreTier(value));
 });
 test('ratios are invariant to resolution, and use actual image aspect ratio', () => {
@@ -42,6 +42,25 @@ test('ratios are invariant to resolution, and use actual image aspect ratio', ()
   assert.notEqual(first[0].value + first[2].value, calculateMetrics('front', {...front, noseBase:{x:.53,y:.55}}, 800, 1000)[2].value);
   const angled={...front,noseBase:{x:.56,y:.55}};
   assert.notEqual(calculateMetrics('front',angled,800,1000)[2].value,calculateMetrics('front',angled,1600,1000)[2].value);
+});
+test('nearby tier notes describe the existing threshold without changing the assigned band',()=>{
+  assert.deepEqual(nearbyTier(5.9),{label:'HTN',threshold:6,remaining:.1});
+  assert.deepEqual(nearbyTier(5.8,'woman'),{label:'HTB',threshold:6,remaining:.2});
+  for(const value of[4.7,5.7,6,9.9,10])assert.equal(nearbyTier(value),null);
+  assert.equal(scoreTier(5.9).label,'MTN');assert.throws(()=>nearbyTier(NaN));
+});
+test('additional front details use pixels, correct head roll and swap eye sides under reflection',()=>{
+  const points={...front,eyeLO:{x:.28,y:.35},eyeRO:{x:.72,y:.36}};
+  const values=frontDetails(points,800,1000).map(item=>item.value);
+  assert.ok(values[0]>0&&values[1]>0);assert.ok(Math.abs(values[2]-.2/.62)<1e-12);
+  assert.deepEqual(frontDetails(points,1600,2000).map(item=>item.value),values);
+  const rotation=.2,rotated=Object.fromEntries(Object.entries(points).map(([key,p])=>{const x=p.x*800-400,y=p.y*1000-500;return[key,{x:(400+x*Math.cos(rotation)-y*Math.sin(rotation))/800,y:(500+x*Math.sin(rotation)+y*Math.cos(rotation))/1000}];}));
+  frontDetails(rotated,800,1000).forEach((item,i)=>assert.ok(Math.abs(item.value-values[i])<1e-10));
+  const mirrored=Object.fromEntries(Object.entries(points).map(([key,p])=>[key,{x:1-p.x,y:p.y}]));
+  for(const[a,b]of[['eyeLO','eyeRO'],['eyeLI','eyeRI'],['cheekL','cheekR'],['jawL','jawR'],['mouthL','mouthR']]){const temp=mirrored[a];mirrored[a]=mirrored[b];mirrored[b]=temp;}
+  const mirrorValues=frontDetails(mirrored,800,1000).map(item=>item.value);
+  assert.ok(Math.abs(mirrorValues[0]-values[1])<1e-10);assert.ok(Math.abs(mirrorValues[1]-values[0])<1e-10);assert.ok(Math.abs(mirrorValues[2]-values[2])<1e-12);
+  assert.notEqual(frontDetails(points,800,1600)[0].value,values[0]);assert.throws(()=>frontDetails({},800,1000));
 });
 test('single side scores do not receive a penalty for an unselected side', () => {
   assert.equal(totalScore('front', {front:8}), 8);

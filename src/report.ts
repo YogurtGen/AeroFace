@@ -1,6 +1,6 @@
 import { translate, type Language } from './i18n';
 import { getFontEmbedCSS, toBlob } from 'html-to-image';
-import { RUBRIC, calculateMetrics, requiredSides, scoreMetrics, tierLabel, tiers, totalScore, contourAngles, type RatingReference, type Mode } from './analysis';
+import { RUBRIC, calculateMetrics, requiredSides, scoreMetrics, tierLabel, tiers, totalScore, contourAngles, frontDetails, nearbyTier, type RatingReference, type Mode } from './analysis';
 import type { Photos } from './photos';
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob), anchor = document.createElement('a');
@@ -55,6 +55,8 @@ export function reportData(photos: Photos, mode: Mode, created: Date, language: 
   return {
     schemaVersion:3,reference,geometryScore,score:appearance?.score??null,appearance:appearance??null,
     tier:appearance?tierLabel(appearance.score,reference):null,sub5:appearance?appearance.score<5:null,
+    nearbyTier:appearance?nearbyTier(appearance.score,reference):null,
+    frontDetails:mode!=='profile'&&photos.front?frontDetails(photos.front.points,photos.front.width,photos.front.height).map(item=>({...item,name:t(item.name),scored:false})):[],
     tierBands:tiers.map(tier=>({...tier,label:tierLabel(tier.min,reference)})),
     contourAngles:mode!=='front'&&photos.profile?contourAngles(photos.profile.points,photos.profile.width,photos.profile.height).map(({id,name,degrees})=>({id,name:t(name),degrees,estimated:true,scored:id!=='chin-contour'})):[],
     scoring: { appearance:'FaceONNX ResNet-18; BGR means 104/117/123, divided by 255; raw output times two, clipped to 0–10; shared gender model',metric:'10 / (1 + ((value - target) / tolerance)^2)', view:'weighted geometric mean', full:'equal arithmetic mean of front and profile' },

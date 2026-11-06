@@ -18,10 +18,10 @@ export function measurementLines(side:Side,points:Points,width:number,height:num
     add('centerline','Facial centerline','The symmetry axis passes through the eye midpoint, perpendicular to the eye line. Paired landmarks are compared across it.',{x:eyes.x-normal.x*scale*.45,y:eyes.y-normal.y*scale*.45},{x:eyes.x+normal.x*scale*.8,y:eyes.y+normal.y*scale*.8},'Upper centerline','Lower centerline',['symmetry'],true);
     segment('outer-eye-pair','Outer-eye alignment','Connects the outer eye corners. Their mirrored offsets contribute to the five-pair symmetry average.','eyeLO','eyeRO',['symmetry']);
     segment('inner-eye-gap','Inner-eye gap','The distance between the inner eye corners is divided by average eye width. These points also contribute to symmetry.','eyeLI','eyeRI',['eyes','symmetry']);
-    for(const [id,name,a,b]of[['left-eye-width','Left eye width','eyeLO','eyeLI'],['right-eye-width','Right eye width','eyeRI','eyeRO']])segment(id,name,'Inner-to-outer eye width. The average of both eye widths is the reference for eye spacing.',a,b,['eyes'],true);
+    for(const [id,name,a,b]of[['left-eye-width','Left eye width','eyeLO','eyeLI'],['right-eye-width','Right eye width','eyeRI','eyeRO']])segment(id,name,'Inner-to-outer eye segment. Its length is used for eye spacing; its head-roll-corrected angle gives the additional eye-corner tilt reading.',a,b,['eyes'],true);
     segment('cheek-width','Cheek width','The visible cheek-to-cheek width normalizes symmetry differences and the jaw-width ratio.','cheekL','cheekR',['jaw','symmetry'],true);
     segment('jaw-width','Jaw width','The distance between the visible jaw corners is divided by cheek width. The same pair also contributes to symmetry.','jawL','jawR',['jaw','symmetry']);
-    segment('mouth-alignment','Mouth alignment','The mouth-corner pair contributes to symmetry. Expression can change this reading.','mouthL','mouthR',['symmetry']);
+    segment('mouth-alignment','Mouth alignment','The mouth-corner pair contributes to symmetry. Its length divided by cheek width gives the additional mouth-width ratio. Expression can change both readings.','mouthL','mouthR',['symmetry']);
     add('eye-chin','Eye-to-chin height','This is the reference length for lower-face balance: eye midpoint to the bottom of the chin.',eyes,p.chin,'Eye midpoint',label('chin'),['balance'],true);
     segment('nose-chin','Nose-to-chin height','Nose-base-to-chin length is divided by the eye-to-chin reference length.','noseBase','chin',['balance']);
   } else {

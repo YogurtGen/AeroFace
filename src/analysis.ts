@@ -28,6 +28,22 @@ export function tierLabel(score:number,reference:RatingReference='man'){
   const index=tiers.indexOf(scoreTier(score));
   return reference==='woman'?['Sub-3','LTB','MTB','HTB','Stacylite','Stacy','Eve','True Eve'][index]:tiers[index].label;
 }
+export function nearbyTier(score:number,reference:RatingReference='man'){
+  const tier=scoreTier(score),remaining=Math.round((tier.max-score)*10)/10;
+  if(tier.max===10||remaining<=0||remaining>.2)return null;
+  return {label:tierLabel(tier.max,reference),threshold:tier.max,remaining};
+}
+export function frontDetails(points:Points,width:number,height:number){
+  validatePoints('front',points,width,height);
+  const p=toPixels(points,width,height);
+  const left={x:(p.eyeLO.x+p.eyeLI.x)/2,y:(p.eyeLO.y+p.eyeLI.y)/2},right={x:(p.eyeRI.x+p.eyeRO.x)/2,y:(p.eyeRI.y+p.eyeRO.y)/2};
+  const roll=Math.atan2(right.y-left.y,right.x-left.x),degrees=(angle:number)=>Math.atan2(Math.sin(angle),Math.cos(angle))*180/Math.PI;
+  return [
+    {id:'left-eye-tilt',name:'Left eye-corner tilt',value:degrees(Math.atan2(p.eyeLI.y-p.eyeLO.y,p.eyeLI.x-p.eyeLO.x)-roll),unit:'degrees'},
+    {id:'right-eye-tilt',name:'Right eye-corner tilt',value:degrees(roll-Math.atan2(p.eyeRO.y-p.eyeRI.y,p.eyeRO.x-p.eyeRI.x)),unit:'degrees'},
+    {id:'mouth-cheek-ratio',name:'Mouth-to-cheek width',value:distance(p.mouthL,p.mouthR)/distance(p.cheekL,p.cheekR),unit:'ratio'},
+  ] as const;
+}
 export function contourAngles(points:Points,width:number,height:number){
   validatePoints('profile',points,width,height);
   const p=toPixels(points,width,height);
