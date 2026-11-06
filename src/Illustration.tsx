@@ -1,42 +1,61 @@
 import { useI18n } from './i18n';
 import type { Side, RatingReference } from './analysis';
 
+const outlines = [
+  { jaw:48,chin:16,length:357,cheek:78,eye:28,gap:45,open:8,tilt:-2,nose:15,mouth:21 },
+  { jaw:50,chin:18,length:350,cheek:74,eye:30,gap:46,open:9,tilt:-1,nose:13,mouth:22 },
+  { jaw:54,chin:21,length:347,cheek:78,eye:32,gap:42,open:8,tilt:0,nose:14,mouth:23 },
+  { jaw:57,chin:23,length:345,cheek:75,eye:33,gap:40,open:7,tilt:1,nose:12,mouth:24 },
+  { jaw:60,chin:25,length:343,cheek:77,eye:34,gap:38,open:6,tilt:2,nose:12,mouth:25 },
+  { jaw:65,chin:28,length:342,cheek:78,eye:35,gap:36,open:5,tilt:3,nose:11,mouth:26 },
+  { jaw:68,chin:30,length:345,cheek:79,eye:35,gap:35,open:5,tilt:3,nose:12,mouth:26 },
+  { jaw:66,chin:28,length:340,cheek:77,eye:35,gap:35,open:5,tilt:4,nose:11,mouth:25 },
+];
+const guide={jaw:57,chin:23,length:345,cheek:75,eye:33,gap:42,open:6,tilt:0,nose:12,mouth:23};
+
 export default function Illustration({side='front',focus='balance',compact=false,plain=false,reference='man',variant=4}: {
   side?:Side;focus?:'balance'|'eyes'|'jaw';compact?:boolean;plain?:boolean;reference?:RatingReference;variant?:number;
 }) {
-  const {t}=useI18n(),woman=reference==='woman';
-  const jaw=woman?277-variant:287-variant*1.8,chin=plain?370-variant*2.8:343;
-  const eyeWidth=plain?26+variant:33,eyeGap=plain?54-variant*3:42;
-  const li=220-eyeGap/2,lo=li-eyeWidth,ri=220+eyeGap/2,ro=ri+eyeWidth;
+  const {t}=useI18n(),woman=reference==='woman',shape=plain?outlines[Math.max(0,Math.min(7,Math.round(variant)))]:guide;
+  const jaw=shape.jaw-(woman?6:0),chinHalf=shape.chin-(woman?3:0),chinY=shape.length-(woman?3:0),cheek=shape.cheek-(woman?2:0);
+  const jawY=plain?309+(shape.length-345)*.18:309,eyeY=214,eyeWidth=shape.eye+(woman?1:0),eyeOpen=shape.open+5+(woman?1:0),tilt=shape.tilt;
+  const li=220-shape.gap/2,lo=li-eyeWidth,ri=220+shape.gap/2,ro=ri+eyeWidth;
+  const nose=shape.nose-(woman?1:0),mouth=shape.mouth,crown=71-(woman?2:0);
+  const cubic=(a:number,b:number,c:number,d:number)=>a*.4**3+3*b*.4**2*.6+3*c*.4*.6**2+d*.6**3;
+  const neckX=cubic(220-jaw,231-jaw,208-chinHalf,220-chinHalf),neckY=cubic(jawY,jawY+16,chinY-5,chinY-2);
   const paths=side==='front'
-    ? focus==='eyes'?['166,214 199,214','199,214 241,214','241,214 274,214']
-      :focus==='jaw'?[`149,249 291,249`,`166,303 274,303`]:[`220,177 220,${chin}`,'166,214 274,214']
-    :focus==='eyes'?['329,231 304,305','312,258 319.6,260.6','312,273 315.1,274.1']
+    ?focus==='eyes'?[`${lo},214 ${li},214`,`${li},214 ${ri},214`,`${ri},214 ${ro},214`]
+      :focus==='jaw'?[`${221-cheek},249 ${219+cheek},249`,`${220-jaw},${jawY} ${220+jaw},${jawY}`]:[`220,175 220,${chinY}`,`${lo},214 ${ro},214`]
+    :focus==='eyes'?['329,231 304,305','312,258 319.07,260.39','312,273 314.52,273.85']
       :focus==='jaw'?['176,217 206,294','206,294 304,305']:['289,188 304,246 304,305'];
+
   return <svg className={`face-illustration line-art ${plain?'outline-only':''}`} viewBox={compact?'85 62 280 315':'0 0 440 490'} fill="none" aria-label={t(side==='front'?'Front face guide illustration':'Side face guide illustration')} role="img">
-    <g stroke="#8294ae" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <g stroke="#8294ae" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {side==='front'?<>
-        <path d={`M147 177c-5 29-2 68 7 97Q159 291 ${440-jaw} 303L199 ${chin-6}q21 13 42 0L${jaw} 303Q281 291 286 274c9-29 12-68 7-97`}/>
-        <path d="M147 208c-18-15-24 1-18 22 2 13 7 24 20 25m144-47c18-15 24 1 18 22-2 13-7 24-20 25M137 216c-7 1-4 17 4 20m162-20c7 1 4 17-4 20"/>
-        {woman?<path d="M146 194c-22-34-9-88 23-105 23-19 65-24 91-9 40 2 55 48 38 97m-77-91c-11 32-34 42-68 50m70-48c9 24 31 37 61 47M145 160c-16 53-27 99-33 136m183-142c15 53 23 102 29 142"/>:<path d="M147 188c-14-10-16-29-10-46-13-27 8-48 31-50 15-22 34-28 56-19 23-15 47-8 54 10 30 1 42 22 31 43 14 16 10 40-12 60M150 143c30-41 76-9 113-42m-105 62c27-35 70-12 95-30"/>}
-        <path d={`M${lo-5} 199q${eyeWidth/2} -10 ${eyeWidth+5} -3M${ri-3} 196q${eyeWidth/2} -7 ${eyeWidth+8} 3M${lo} 214q${eyeWidth/2} -13 ${eyeWidth} 0q${-eyeWidth/2} 11 ${-eyeWidth} 0ZM${ri} 214q${eyeWidth/2} -13 ${eyeWidth} 0q${-eyeWidth/2} 11 ${-eyeWidth} 0ZM${(lo+li)/2} 211v6M${(ri+ro)/2} 211v6`}/>
-        <path d="M215 225l-7 37c4 5 7 5 12 5s8 0 12-5m-22 5 5 3m10 0 5-3M198 291c7-1 15-5 22-2 7-3 15 1 22 2m-44 0c15 4 29 4 44 0m-37 7c10 5 20 5 30 0"/>
-        <path d={`M175 ${chin/2+144}V367c-6 22-55 27-65 62M265 ${chin/2+144}V367c6 22 55 27 65 62M110 429c64 18 156 18 220 0`}/>
+        <path d={`M${220-crown} 192C${220-crown} 176 ${216-crown} 163 ${220-crown} 145C${224-crown} 115 188 96 220 96C252 96 ${216+crown} 115 ${220+crown} 145C${224+crown} 163 ${220+crown} 176 ${220+crown} 192C${221+cheek} 214 ${220+cheek} 244 ${217+cheek} 265C${215+cheek} 285 ${227+jaw} ${jawY-9} ${220+jaw} ${jawY}C${209+jaw} ${jawY+16} ${232+chinHalf} ${chinY-5} ${220+chinHalf} ${chinY-2}Q220 ${chinY+2} ${220-chinHalf} ${chinY-2}C${208-chinHalf} ${chinY-5} ${231-jaw} ${jawY+16} ${220-jaw} ${jawY}C${213-jaw} ${jawY-9} ${225-cheek} 285 ${223-cheek} 265C${220-cheek} 244 ${219-cheek} 214 ${220-crown} 192Z`}/>
+        <path d={`M${220-cheek} 211c-19-13-24 1-18 22 3 13 8 23 21 22M${220+cheek} 211c19-13 24 1 18 22-3 13-8 23-21 22M${209-cheek} 220c-6 1-3 14 4 17M${231+cheek} 220c6 1 3 14-4 17`}/>
+        <path d={`M${lo-3} ${199-tilt}Q${(lo+li)/2} ${191-tilt} ${li+1} 198M${ri-1} 198Q${(ri+ro)/2} ${191-tilt} ${ro+3} ${199-tilt}`}/>
+        <path d={`M${lo} ${eyeY-tilt}Q${(lo+li)/2} ${eyeY-eyeOpen} ${li} ${eyeY}Q${(lo+li)/2} ${eyeY+eyeOpen*.65} ${lo} ${eyeY-tilt}ZM${ri} ${eyeY}Q${(ri+ro)/2} ${eyeY-eyeOpen} ${ro} ${eyeY-tilt}Q${(ri+ro)/2} ${eyeY+eyeOpen*.65} ${ri} ${eyeY}M${(lo+li)/2-3} ${eyeY-3}q0 6 3 6t3-6M${(ri+ro)/2-3} ${eyeY-3}q0 6 3 6t3-6`}/>
+        <path d={`M214 231c0 11-2 21-${nose-6} 29q-3 6 4 7m${2*nose-8} 0q7-1 4-7M${220-nose+4} 268q4-3 7 0m2 0q3-3 7 0M214 273q6 3 12 0`}/>
+        <path d={`M${220-mouth} 293Q207 288 215 289Q220 292 225 289Q233 288 ${220+mouth} 293Q220 298 ${220-mouth} 293M${226-mouth} 301q${mouth-6} 7 ${2*mouth-12} 0`}/>
+        {(plain&&variant>=4)&&<path d={`M${222-cheek} 259q8 9 16 12M${218+cheek} 259q-8 9-16 12`} opacity=".6"/>}
+        <path d={`M${neckX} ${neckY}C${neckX+1} 351 ${neckX+3} 373 ${neckX-2} 381C${neckX-10} 394 126 398 110 422M${440-neckX} ${neckY}C${439-neckX} 351 ${437-neckX} 373 ${442-neckX} 381C${450-neckX} 394 314 398 330 422`}/>
       </>:<>
-        <path d="M140 177c-21-11-26-37-13-57 4-27 27-43 51-42 25-22 53-16 70-10 26-12 48-3 52 16 28 5 36 27 23 44-6 8-15 13-26 15M141 143c34-39 91-12 129-49m-106 61c22-19 57-7 79-30"/>
-        <path d="M297 143c0 14 5 28-1 36l-7 9c3 12 21 27 35 36 10 7 7 13-2 16l-18 6c-3 5 0 9 8 12 5 3 4 7-3 9l3 6c5 5-2 9-5 15-3 4 1 11-3 17-7 10-27 9-41 4l-57-15c-12-8-21-26-24-43M139 174c-11 25-6 48 5 66l15 24c5 12 8 27 7 39"/>
-        <path d="M176 217c-1-13-9-22-20-21-21 1-19 31-7 47 10 14 23 13 28-1m-10-28c-17 4-16 19-3 20M264 182c9-5 18-5 26-1m-26 16c8-7 17-8 25-6l-9 9-16-3Zm16-5v6M307 239l8-3m-16 31 11 0"/>
-        <path d="M166 303c0 36-20 53-42 69-20 14-32 31-39 57m178-120c-2 27-6 45 12 62 23 20 56 26 70 58M85 429c79 20 182 20 260 0"/>
+        <path d="M297 143C286 111 258 92 223 94C172 91 126 111 122 154C117 177 122 197 134 213C137 231 143 251 153 270C162 285 166 294 166 303"/>
+        <path d="M297 143C298 158 301 177 289 188C295 204 317 220 329 231C330 235 322 242 304 246C302 250 307 255 312 258Q318 262 309 267L312 273Q316 277 307 284C302 290 304 300 304 305C297 313 278 313 263 309"/>
+        <path d="M176 217c-1-13-9-22-20-21-21 1-19 31-7 47 10 14 23 13 28-1m-10-28c-17 4-16 19-3 20M264 182c9-5 18-5 26-1M264 197q12-10 25-6l-9 9-16-3Zm16-5v6M307 239q5-5 9-3M300 267h10"/>
+        <path d="M179 251C183 271 194 287 206 294C233 305 270 312 294 310"/>
+        <path d="M166 303c0 36-20 53-42 69-20 14-32 31-39 57M263 309c-2 27-6 45 12 62 23 20 56 26 70 58"/>
       </>}
     </g>
     {!plain&&<>
       <g stroke="#77a0d5" strokeWidth="1" opacity=".38" strokeDasharray="3 5">
-        {side==='front'?<path d="M149 249H112v54h54m108 0h47v-54h-30"/>:<path d="M176 217h-48v77h78m98 11h43v-74h-18"/>}
+        {side==='front'?<path d={`M${221-cheek} 249H112V${jawY}H${220-jaw}M${220+jaw} ${jawY}H321V249H${219+cheek}`}/>:<path d="M176 217h-48v77h78m98 11h43v-74h-18"/>}
       </g>
       <g className="guide-focus" key={`${side}-${focus}`} stroke="#4e8cda" strokeWidth="1.7" fill="none">
         {paths.map((path,index)=><g key={path} style={{animationDelay:`${index*65}ms`}} className="guide-focus-segment"><polyline points={path}/>{path.split(' ').map((pair,i)=>{const[x,y]=pair.split(',').map(Number);return <circle key={i} cx={x} cy={y} r="3.5" fill="#f4f7fc"/>;})}</g>)}
       </g>
-      {!compact&&<g fill="#6685ad" fontSize="11" fontFamily="Geist, sans-serif">{side==='front'?<text x="115" y="235">{t(focus==='eyes'?'Eye line':focus==='jaw'?'Jaw width':'Symmetry reference')}</text>:<text x="123" y="325">{t(focus==='jaw'?'Visual ramus':focus==='eyes'?'Lip–chin relation':'Profile balance')}</text>}</g>}
+      {!compact&&<g fill="#6685ad" fontSize="11" fontFamily="Geist, sans-serif">{side==='front'?<text x="220" y="462" textAnchor="middle">{t(focus==='eyes'?'Eye line':focus==='jaw'?'Jaw width':'Symmetry reference')}</text>:<text x="220" y="462" textAnchor="middle">{t(focus==='jaw'?'Visual ramus':focus==='eyes'?'Lip–chin relation':'Profile balance')}</text>}</g>}
     </>}
   </svg>;
 }

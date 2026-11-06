@@ -1,6 +1,6 @@
 # Illustration references
 
-Generated with the built-in image tool. The selected direction is a natural head rendered with a few blue-gray contours. The web app uses a native SVG adaptation in `src/Illustration.tsx` so line placement and focus animations stay editable. These reference images are project documentation, not runtime downloads.
+These earlier proportion studies were generated with the built-in image tool. The current web artwork is hairless native SVG in `src/Illustration.tsx`, following the user's updated brief: simple blue-gray contours, smoothly connected anatomy, readable facial features and no hair. The generated studies below informed the proportions; their hairstyles are not part of the final interface. These images are project documentation, not runtime downloads.
 
 ## Profile — `reference-profile.png`
 
@@ -10,4 +10,4 @@ Generated with the built-in image tool. The selected direction is a natural head
 
 > Create a matching FRONT-FACING head-and-neck outline for the same facial-analysis web app, using this side-profile drawing only as the visual-style and character reference. One original adult male head looking straight forward, neutral expression, normal natural human proportions, short swept-back hair, both ears visible. Extremely simple line art: a clean outer face silhouette, one simple hair cap with at most three internal curves, minimal brows and eyes, a few nose and lip contours, a clearly defined natural jaw and chin, and two neck/shoulder lines. Thin muted blue-gray strokes around #8194ad. Lots of open space; no skin texture, hatching, shaded fills, fine hair strands, 3D rendering or ornamental detail. This must stay clear when displayed small in a minimal pale blue interface. One head only, centered with breathing room on true transparent alpha background. No labels, dots, measurement lines, words or frame.
 
-Tier variants and the woman reference are native SVG variations of this simple contour language. They are illustrative examples, not a claim that a particular anatomy determines a tier.
+Tier variants and both Man/Woman references use the current hairless SVG contour language. Differences come from eyes, cheeks, jaw and chin proportions. They are illustrative examples, not a claim that a particular anatomy determines a tier.

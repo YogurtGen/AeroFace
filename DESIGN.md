@@ -42,7 +42,7 @@ Self-review after looking at all desktop, tablet and phone captures: design 8/10
 
 ## Line art, reference and report update
 
-The user rejected both bald mannequin drawings and a detailed sculptural treatment, then requested simpler line art. Generated front/profile references were reduced to native SVG silhouettes with a few hair, eye, nose, mouth, ear and jaw contours. Only the selected measurement group is emphasized. The same SVG language supplies illustrative tier outlines; these are not calibrated reference faces. Final generation prompts and source images are recorded in `design/illustration-prompts.md`.
+Front, profile and tier illustrations use hairless native SVG portraits. Continuous curved contours connect the scalp, cheeks, jaw and chin, with a small number of strokes for eyes, nose, lips and ears. Tier examples vary eye shape, spacing, cheek width, jaw width and chin proportions instead of hairstyle. Both Man and Woman references use the same hairless treatment. Base strokes retain the interface's blue-gray `#8294ae`; measurement highlights retain `#4e8cda`. Measurement captions sit below the portrait rather than across its features. Only the selected measurement group is emphasized. The tier portraits are illustrative examples, not calibrated reference faces. Earlier generated proportion studies and their prompts are recorded in `design/illustration-prompts.md`; the application uses the current SVG artwork.
 
 Man/Woman is user-selected. It controls the illustrated reference and community terminology while the documented appearance model remains shared. The app does not infer gender or invent a separate calibration.
 
