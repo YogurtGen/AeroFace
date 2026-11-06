@@ -45,3 +45,14 @@
 .tier-alias{font-size:12px;font-weight:400;color:#697e9c}.editor-tools{flex-wrap:wrap}
 
 .profile-point-shortcuts{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 18px}.profile-point-shortcuts button{font-size:11px;padding:8px 10px;min-height:38px}.profile-point-shortcuts button[aria-pressed=true]{border-color:#7fa5d7;background:#edf3fc;color:#3f679d}
+
+@media print{
+ .print-score-summary{padding:8px 0 10px}
+ .print-visual-row .radar-chart svg{max-height:165px}
+ .print-visual-row .print-photo{--photo-height:165px}
+ .print-visual-row .print-photo .photo-canvas{height:165px}
+ .print-report td,.print-report th{padding:3pt}
+ .print-report .front-details dl{row-gap:6px}
+ .print-report>section>p{margin-top:4pt}
+ .print-report footer{margin-top:6pt;padding-top:4pt;line-height:1.45}
+}

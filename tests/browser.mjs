@@ -19,6 +19,7 @@ if (!remote) {
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const context=await browser.newContext({acceptDownloads:true});
 const page=await context.newPage();
+await page.addInitScript(()=>{window.nextActionMotions=[];const animate=Element.prototype.animate;Element.prototype.animate=function(frames,options){if(this.matches('.next-button'))window.nextActionMotions.push({frames,duration:options?.duration});return animate.call(this,frames,options);};});
 const failures=[],pageErrors=[],external=[],nonGet=[];
 page.on('pageerror',error=>pageErrors.push(error.message));
 context.on('request',request=>{
@@ -83,8 +84,40 @@ try {
     }
     assert.equal(await page.getByRole('button',{name:'Start analysis'}).isEnabled(),true);await page.getByRole('button',{name:'Clear session'}).click();
   });
+  await check('a partial Full upload explains the missing photo and can explicitly continue with one view',async()=>{
+    await page.setViewportSize({width:390,height:844});await upload('profile',fixture);
+    assert.match(await page.locator('#upload-next-status').innerText(),/Add a front photo/);
+    assert.equal(await page.getByRole('button',{name:'Start analysis'}).isDisabled(),true);
+    assert.equal(await page.locator('[data-upload-side="front"].next-upload').count(),1);
+    const previous=await page.evaluate(()=>window.nextActionMotions.length);
+    await page.getByRole('button',{name:'Use side photo only'}).click();
+    await page.waitForFunction(()=>{const b=document.querySelector('.next-action .next-button').getBoundingClientRect();return b.top>=0&&b.bottom<=innerHeight&&window.nextActionMotions.length>0;});
+    assert.equal(await page.locator('.upload-card').count(),1);assert.equal(await page.getByRole('button',{name:'Start analysis'}).isEnabled(),true);
+    await page.waitForFunction(count=>window.nextActionMotions.length===count+1,previous);
+    const motion=await page.evaluate(()=>window.nextActionMotions.at(-1));assert.equal(motion.duration,280);assert.equal(motion.frames.at(-1).transform,'scale(1)');
+    await page.screenshot({path:`test-results/${label}-next-action-mobile.png`,animations:'disabled'});
+    await page.getByRole('button',{name:'Remove side photo'}).click();assert.equal(await page.getByRole('button',{name:'Start analysis'}).isDisabled(),true);
+  });
+  await check('keyboard upload keeps the current position and reduced-motion upload reveals the action without scaling it',async()=>{
+    await page.getByRole('group',{name:'Analysis mode'}).getByRole('button').nth(0).click();
+    await page.keyboard.press('Tab');await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
+    const previous=await page.evaluate(()=>window.nextActionMotions.length);
+    await upload('front',fixture);assert.equal(await page.evaluate(()=>scrollY),0);assert.equal(await page.evaluate(()=>window.nextActionMotions.length),previous);
+    await page.getByRole('button',{name:'Clear session'}).click();await page.emulateMedia({reducedMotion:'reduce'});
+    await page.getByRole('group',{name:'Analysis mode'}).getByRole('button').nth(0).click();await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await upload('front',fixture);
+    await page.waitForFunction(()=>{const b=document.querySelector('.next-action .next-button').getBoundingClientRect();return b.top>=0&&b.bottom<=innerHeight;});
+    assert.equal(await page.evaluate(()=>window.nextActionMotions.length),previous);
+    await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'ID Indonesia'}).click();await page.getByRole('button',{name:'Tutup jendela'}).click();
+    assert.match(await page.locator('#upload-next-status').innerText(),/Foto siap/);assert.match(await page.locator('.next-action-heading').innerText(),/Berikutnya: pengukuran/);
+    await page.getByRole('button',{name:'Pengaturan',exact:true}).click();await page.getByRole('button',{name:'EN English'}).click();await page.getByRole('button',{name:'Close dialog'}).click();
+    await page.getByRole('button',{name:'Clear session'}).click();await page.emulateMedia({reducedMotion:'no-preference'});await page.setViewportSize({width:1440,height:1000});
+  });
   await check('profile-only guided placement creates its own report',async()=>{
-    await page.getByRole('group',{name:'Analysis mode'}).getByRole('button').nth(1).click();await upload('profile',fixture);await page.getByRole('button',{name:'Start analysis'}).click();await page.locator('#point-selector').waitFor();await page.locator('.analysis-visuals').waitFor({state:'hidden',timeout:60000});await placePoints(profilePoints);await page.getByRole('button',{name:'Confirm & create report'}).click();await page.getByRole('heading',{name:'Your face, in perspective.'}).waitFor();assert.match(await page.locator('.report-summary').innerText(),/Not analyzed/);assert.equal(await page.locator('.report-side').count(),1);assert.match(await page.locator('.report-side').innerText(),/2D estimate/);await page.screenshot({path:`test-results/${label}-profile-report.png`,fullPage:true,animations:"disabled"});
+    await page.getByRole('group',{name:'Analysis mode'}).getByRole('button').nth(1).click();await upload('profile',fixture);await page.getByRole('button',{name:'Start analysis'}).click();await page.locator('#point-selector').waitFor();await page.locator('.analysis-visuals').waitFor({state:'hidden',timeout:60000});
+    await page.setViewportSize({width:390,height:844});await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
+    const confirm=page.getByRole('button',{name:'Confirm & create report'}),bounds=await confirm.boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=844);assert.equal(await confirm.isDisabled(),true);
+    await page.screenshot({path:`test-results/${label}-confirm-action-mobile.png`,animations:'disabled'});await page.setViewportSize({width:1440,height:1000});
+    await placePoints(profilePoints);await confirm.click();await page.getByRole('heading',{name:'Your face, in perspective.'}).waitFor();assert.match(await page.locator('.report-summary').innerText(),/Not analyzed/);assert.equal(await page.locator('.report-side').count(),1);assert.match(await page.locator('.report-side').innerText(),/2D estimate/);await page.screenshot({path:`test-results/${label}-profile-report.png`,fullPage:true,animations:"disabled"});
   });
   await check('report tier boundaries and limitations remain visible in both languages',async()=>{
     await page.locator('.tier-scale summary').click();assert.equal(await page.locator('.tier-band-list>div').count(),8);assert.equal(await page.locator('.tier-band-list .current').count(),0);assert.equal(await page.locator('.tier-band-list .face-illustration').count(),8);assert.equal(await page.locator('.tier-badge').count(),0);
@@ -135,12 +168,12 @@ try {
     await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('group',{name:'Rating reference'}).getByRole('button',{name:'Woman',exact:true}).click();await page.getByRole('button',{name:'Close dialog'}).click();assert.equal(await page.locator('.headline-score').innerText(),heading);
     const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Data',exact:true}).click();const download=await pending;const {readFile}=await import('node:fs/promises');const data=JSON.parse(await readFile(await download.path(),'utf8'));assert.equal(data.reference,'woman');assert.equal(data.tier,await page.locator('.tier-badge').innerText());assert.equal(data.appearance.model,'FaceONNX ResNet-18');assert.ok(Number.isFinite(data.appearance.raw));assert.equal(data.score,Math.round(Math.max(0,Math.min(10,data.appearance.raw*2))*10)/10);assert.equal(data.geometryScore,data.sides.front.score);
     assert.equal(data.appearance.pipeline,'aligned-six-view-v1');assert.equal(data.appearance.samples.length,6);assert.equal(data.appearance.calibration.reason,'not-loaded');assert.equal(data.calibrationProfile,null);assert.match(await page.locator('.report-screen .appearance-notes').innerText(),/not a confidence interval/);
-    assert.equal(data.frontDetails.length,3);assert.ok(data.frontDetails.every(item=>item.scored===false&&Number.isFinite(item.value)));assert.equal(await page.locator('.report-side .front-details dd').count(),3);assert.equal(await page.locator('.print-report .front-details dd').count(),3);
+    assert.equal(data.frontDetails.length,6);assert.ok(data.frontDetails.every(item=>item.scored===false&&Number.isFinite(item.value)));assert.equal(await page.locator('.report-side .front-details dd').count(),6);assert.equal(await page.locator('.print-report .front-details dd').count(),6);
     assert.equal(await page.locator('.report-summary .tier-near').count(),data.nearbyTier?1:0);assert.equal(await page.locator('.print-report .tier-near').count(),data.nearbyTier?1:0);if(data.nearbyTier)assert.ok((await page.locator('.report-summary .tier-near').innerText()).includes(data.nearbyTier.label));
     await page.locator('.tier-scale summary').click();assert.match(await page.locator('.tier-band-list').innerText(),/True Eve/);assert.match(await page.locator('.sub-five-guide').innerText(),/4\.7 = MTB \+ Sub-5; 5\.3 = MTB/);await page.locator('.tier-scale summary').click();
     await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('group',{name:'Rating reference'}).getByRole('button',{name:'Man',exact:true}).click();await page.getByRole('button',{name:'Close dialog'}).click();
     await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).check();
-    await page.emulateMedia({media:'print'});await page.pdf({path:`test-results/${label}-ai-report.pdf`,printBackground:true,preferCSSPageSize:true});await page.emulateMedia({media:'screen'});
+    await page.emulateMedia({media:'print'});const pdf=await page.pdf({path:`test-results/${label}-ai-report.pdf`,printBackground:true,preferCSSPageSize:true});assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)||[]).length,1,'the standard front report stays on one A4 page');await page.emulateMedia({media:'screen'});
     await downloadImage('ai-report',true);
   });
   await check('consensus CSV calibration is local, validated and reversible without changing geometry',async()=>{

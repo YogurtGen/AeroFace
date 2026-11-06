@@ -1,5 +1,22 @@
 import { useEffect } from 'react';
 
+export function guideNextAction(target:HTMLElement,button?:HTMLButtonElement,scroll=true){
+  if(document.documentElement.dataset.input==='keyboard')return;
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='off';
+  if(scroll)target.scrollIntoView({block:'center',behavior:reduce?'instant':'smooth'});
+  if(reduce||!button)return;
+  let animation:Animation|undefined;
+  const observer=new IntersectionObserver(entries=>{
+    if(!entries.some(entry=>entry.isIntersecting&&entry.intersectionRatio>=.95))return;
+    observer.disconnect();
+    animation=button.animate([{transform:'scale(1)'},{transform:'scale(1.035)',offset:.45},{transform:'scale(1)'}],{duration:280,easing:getComputedStyle(button).getPropertyValue('--ease-out').trim()});
+  },{threshold:.95});
+  const stop=()=>{observer.disconnect();animation?.cancel();window.removeEventListener('keydown',stop);window.removeEventListener('pointerdown',stop);};
+  observer.observe(button);
+  window.addEventListener('keydown',stop,{once:true});window.addEventListener('pointerdown',stop,{once:true});
+  return stop;
+}
+
 export function finishScanAnimation(startedAt:number, signal:AbortSignal):Promise<void> {
   const remaining=3000-(performance.now()-startedAt);
   if(remaining<=0||signal.aborted)return Promise.resolve();

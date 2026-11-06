@@ -2,6 +2,8 @@
 
 Browser-only face analysis studio with a liquid glass interface. Choose a front photo, a side photo, or both; inspect measurement points and visual explanations; export a personal report. English and Indonesian are available in Settings, including explanations, error messages and downloaded reports. English is the default.
 
+Choose photos, press **Start analysis**, review the landmark positions, then press **Confirm & create report** (or **Confirm & continue** for the other view). Full mode requires two photos; a partial upload offers an explicit single-view option. Successful uploads reveal the next required photo or the ready action, with one brief button emphasis. Keyboard use and reduced-motion preferences are respected. The mobile confirmation action remains visible while reviewing points.
+
 ## Run locally
 
 Requires Node.js 24+.

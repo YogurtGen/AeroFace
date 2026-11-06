@@ -16,6 +16,12 @@ The current improvements are automatic reversible face framing, six framing/mirr
 
 All current image processing and inference remain in the browser. GitHub Pages distributes static files, not photo inference. Any future remote model would require a separate, explicit choice after the provider, transmitted data and retention behavior can be reviewed; no remote-image path is implemented.
 
+## FaceIQ comparison
+
+[FaceIQ's published method](https://www.faceiqlabs.com/llms.txt) separates Harmony, Angularity, Dimorphism and Features. Harmony uses ratios; Features includes assessments by a vision model. Its public description is a product reference, not a replacement model, labeled dataset or evidence that its population-percentile claims transfer to AeroFace.
+
+AeroFace now also reports eye-center spacing relative to cheek width, eye-to-mouth height relative to eye spacing, and mouth width relative to eye spacing. Its eye centers are corner midpoints, not detected pupils, so these are explicitly named 2D proxies rather than exact copies of FaceIQ's measurements. They are unscored context, included in the same screen/PDF/PNG report. Existing appearance weights, six-view preprocessing, score aggregation and tier thresholds are unchanged. There is no new validated accuracy or bias-reduction claim. A strict cartoon rejection threshold is not deployed.
+
 ## Profile landmarks
 
 The publisher's [Face Mesh V2 model card](https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Face%20Mesh%20V2.pdf) identifies large head turns beyond 80 degrees as outside its intended inputs. Full side profiles can therefore yield missing or misplaced surface points. Carrying a successful detection through an exact crop transform fixes a processing regression, not that model limitation. The app validates basic jaw ordering and keeps the three relevant points directly editable. Facial fat percentage, skeletal forward growth and cheekbone prominence are not added as inferred scores without suitable labeled validation.

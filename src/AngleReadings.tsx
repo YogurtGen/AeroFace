@@ -6,7 +6,7 @@ export default function AngleReadings({photo,side='profile'}:{photo:Photo;side?:
   if(side==='front'){
     let details:ReturnType<typeof frontDetails>;
     try{details=frontDetails(photo.points,photo.width,photo.height);}catch{return null;}
-    return <div className="angle-readings front-details"><h3>{t('Additional facial details')}</h3><dl>{details.map(item=><div key={item.id}><dt>{t(item.name)}</dt><dd>{(Math.abs(item.value)<1e-8?0:item.value).toLocaleString(language==='id'?'id-ID':'en-US',{minimumFractionDigits:item.unit==='ratio'?2:1,maximumFractionDigits:item.unit==='ratio'?2:1})}{item.unit==='degrees'?'°':'×'}</dd></div>)}</dl><p>{t('Eye tilt is corrected for head roll; positive means the outer corner is higher. Left/right refer to the photo. Mouth width is divided by cheek width. These 2D details are context only and do not change either score.')}</p></div>;
+    return <div className="angle-readings front-details"><h3>{t('Additional facial details')}</h3><dl>{details.map(item=><div key={item.id}><dt>{t(item.name)}</dt><dd>{(Math.abs(item.value)<1e-8?0:item.value).toLocaleString(language==='id'?'id-ID':'en-US',{minimumFractionDigits:item.unit==='ratio'?2:1,maximumFractionDigits:item.unit==='ratio'?2:1})}{item.unit==='degrees'?'°':'×'}</dd></div>)}</dl><p>{t('Tilt is roll-corrected; positive means outer corners are higher. Left/right follow the photo. Eye centers are corner midpoints, not pupils. Height runs perpendicular from the eye line to the mouth center. Ratios divide the first measure by the second. Context only; neither score changes.')}</p></div>;
   }
   let angles:ReturnType<typeof contourAngles>=[];
   try{angles=contourAngles(photo.points,photo.width,photo.height);}catch{return null;}

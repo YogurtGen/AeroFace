@@ -7,7 +7,7 @@ import AngleReadings from './AngleReadings';
 import RadarChart from './RadarChart';
 import { flushSync } from 'react-dom';
 import { measurementLines } from './measurement-lines';
-import { finishScanAnimation, useIntroMotion } from './motion';
+import { finishScanAnimation, guideNextAction, useIntroMotion } from './motion';
 import AnalysisOverlay from './AnalysisOverlay';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { ArrowDownToLine, ArrowLeft, ArrowRight, Check, CheckCheck, ChevronRight, CircleHelp, Crop, Download, FileImage, FileJson, Fingerprint, Focus, ImagePlus, Info, Layers2, LockKeyhole, Maximize2, Monitor, MoveUpRight, RotateCw, ScanFace, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Upload, Video, WifiOff, X, ZoomIn, ZoomOut } from 'lucide-react';
@@ -22,13 +22,13 @@ const modes: { id: Mode; title: string; subtitle: string }[] = [
 ];
 function Brand() { return <span className="brand"><span className="brand-symbol"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="m5 23 8-18h3l8 18M8 17h12" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><circle cx="23" cy="5" r="2" fill="currentColor"/></svg></span>AeroFace<span className="brand-dot">.</span></span>; }
 function ErrorMessage({ message, onDismiss }: { message: string; onDismiss: () => void }) { const { t } = useI18n(); return <div className="error-message" role="alert"><Info size={18}/><p>{message}</p><button className="icon-button" aria-label={t("Close message")} onClick={onDismiss}><X size={16}/></button></div>; }
-function UploadCard({ side, photo, disabled, onFile, onRemove, onCamera }: { side: Side; photo?: Photo; disabled: boolean; onFile: (file: File) => void; onRemove: () => void; onCamera: () => void }) {
+function UploadCard({ side, photo, disabled, next, onFile, onRemove, onCamera }: { side: Side; photo?: Photo; disabled: boolean; next:boolean; onFile: (file: File) => void; onRemove: () => void; onCamera: () => void }) {
   const { t } = useI18n();
   const inputRef=useRef<HTMLInputElement>(null), [dragging,setDragging]=useState(false);
   function drop(event: DragEvent<HTMLDivElement>) {event.preventDefault();setDragging(false);if(disabled)return;if(event.dataTransfer.files[0])onFile(event.dataTransfer.files[0]);}
-  return <div className={`upload-card ${photo?'has-photo':''} ${dragging?'dragging':''}`} onDragOver={event=>{event.preventDefault();if(!disabled)setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={drop}>
+  return <div data-upload-side={side} className={`upload-card ${photo?'has-photo':''} ${dragging?'dragging':''} ${next?'next-upload':''}`} onDragOver={event=>{event.preventDefault();if(!disabled)setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={drop}>
     <input ref={inputRef} data-testid={`upload-${side}`} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" tabIndex={-1} disabled={disabled} onChange={event=>{if(event.target.files?.[0])onFile(event.target.files[0]);event.target.value='';}}/>
-    <div className="upload-card-top"><span>{t(SIDE_LABEL[side])}</span>{photo?<span className="ready-label"><Check size={13}/>{t("Ready")}</span>:<span className="photo-count">{side==='front'?'01':'02'}</span>}</div>
+    <div className="upload-card-top"><span>{t(SIDE_LABEL[side])}</span>{photo?<span className="ready-label"><Check size={13}/>{t("Ready")}</span>:<span className={next?'next-label':'photo-count'}>{next?t('Next'):side==='front'?'01':'02'}</span>}</div>
     <button className="upload-target" disabled={disabled} onClick={()=>inputRef.current?.click()} aria-label={t(side==='front'?'Choose front photo':'Choose side photo')}>
       {photo?<><img src={photo.url} alt={t(side==='front'?'Your chosen front photo':'Your chosen side photo')}/><span className="replace-photo"><ImagePlus size={16}/>{t("Change photo")}</span></>:<><span className="upload-icon"><ImagePlus size={24} strokeWidth={1.4}/></span><strong>{t("Choose photo")}</strong><span>{t("or drop it here")}</span></>}
     </button>
@@ -81,6 +81,7 @@ export default function App() {
   const [calibration,setCalibration]=useState<Calibration|null>(null);
   const [cameraError,setCameraError]=useState(''), [cameraReady,setCameraReady]=useState(false), videoRef=useRef<HTMLVideoElement>(null);
   const titleRef=useRef<HTMLHeadingElement>(null), transitionRef=useRef<ViewTransition|null>(null);
+  const nextActionRef=useRef<HTMLDivElement>(null),startButtonRef=useRef<HTMLButtonElement>(null),confirmButtonRef=useRef<HTMLButtonElement>(null),pendingUploadGuide=useRef(false);
   const [motion,setMotion]=useState(true),[lineId,setLineId]=useState(''),[phase,setPhase]=useState<DetectionPhase>('runtime'),[detecting,setDetecting]=useState(false),[guideFocus,setGuideFocus]=useState<'balance'|'eyes'|'jaw'>('balance');
   const sessionActiveRef=useRef(false);
   sessionActiveRef.current=!!busy||!!calibration||dialog==='camera'||Object.values(photos).some(Boolean);
@@ -101,6 +102,7 @@ export default function App() {
 
   const sides=requiredSides(mode), photo=photos[side];
   const hasPhotos=sides.every(key=>photos[key]);
+  const readyPhotos=sides.filter(key=>photos[key]).length,missingSide=sides.find(key=>!photos[key]);
   const allConfirmed=sides.every(key=>photos[key]?.confirmed);
   let metrics: Metric[]=[];
   if(photo){try{metrics=calculateMetrics(side,photo.points,photo.width,photo.height);}catch{/* Incomplete placement is an expected editor state. */}}
@@ -114,6 +116,18 @@ export default function App() {
   const visibleLines=lines.filter(line=>line.metricIds.includes(selectedMetric?.id??''));
   const activeLine=visibleLines.find(line=>line.id===lineId)??visibleLines[0];
   const donePoints=photo?definitions[side].filter(def=>photo.points[def.id]).length:0;
+
+  useEffect(()=>{
+    if(step!==0||busy||!pendingUploadGuide.current)return;
+    pendingUploadGuide.current=false;
+    const target=hasPhotos?nextActionRef.current:document.querySelector<HTMLElement>(`[data-upload-side="${missingSide}"]`);
+    if(target)return guideNextAction(target,hasPhotos?startButtonRef.current??undefined:undefined);
+  },[step,busy,mode,photos,hasPhotos,missingSide]);
+  useEffect(()=>{
+    if(step===1&&editing&&!busy&&donePoints===definitions[side].length&&confirmButtonRef.current)return guideNextAction(confirmButtonRef.current,confirmButtonRef.current,false);
+  },[step,editing,busy,side,donePoints]);
+  useEffect(()=>{if(step===1){const stage=document.querySelector<HTMLElement>('.photo-stage');if(stage)guideNextAction(stage);}},[step,side]);
+  useEffect(()=>{if(error){const banner=document.querySelector<HTMLElement>('.error-message');if(banner)guideNextAction(banner);}},[error]);
 
   function putPhoto(key: Side, next?: Photo) {const previous=photosRef.current[key];const state={...photosRef.current,[key]:next};photosRef.current=state;setPhotos(state);if(previous&&previous.url!==next?.url)revokePhoto(previous);}
   useEffect(()=>()=>{scanController.current?.abort();Object.values(photosRef.current).forEach(revokePhoto);stopDetector();stopAppearance();},[]);
@@ -156,6 +170,7 @@ export default function App() {
         const fitted=await fitPhotoToFace(next,mesh,key==='profile'?points:undefined);
         if(epoch===epochRef.current)putPhoto(key,fitted);else revokePhoto(fitted);
       }catch{if(epoch===epochRef.current)putPhoto(key,{...next,framing:'unavailable'});}
+      if(epoch===epochRef.current)pendingUploadGuide.current=true;
     }catch(err){if(epoch===epochRef.current)setError((err as Error).message);}finally{if(epoch===epochRef.current)setBusy('');}}
   async function startAnalysis(){if(!hasPhotos)return;setStep(1);setEditing(true);setMetricId('');setError('');setZoom(1);chooseSide(sides[0]);if(!Object.keys(photosRef.current[sides[0]]!.points).length)await autoDetect(sides[0]);}
   async function autoDetect(key:Side=side){
@@ -199,7 +214,7 @@ export default function App() {
       else{setCreated(new Date());setStep(2);setEditing(false);setMetricId('');titleRef.current?.focus();}
     }catch(err){setError((err as Error).message);}
   }
-  function reset(){epochRef.current++;scanController.current?.abort();scanController.current=null;setDetecting(false);stopDetector();stopAppearance();Object.values(photosRef.current).forEach(revokePhoto);photosRef.current={};setPhotos({});setCalibration(null);setStep(0);setBusy('');setError('');setIncludePhotos(false);setZoom(1);setSide(mode==='profile'?'profile':'front');}
+  function reset(){epochRef.current++;pendingUploadGuide.current=false;scanController.current?.abort();scanController.current=null;setDetecting(false);stopDetector();stopAppearance();Object.values(photosRef.current).forEach(revokePhoto);photosRef.current={};setPhotos({});setCalibration(null);setStep(0);setBusy('');setError('');setIncludePhotos(false);setZoom(1);setSide(mode==='profile'?'profile':'front');}
   async function capture(){const video=videoRef.current;if(!video?.videoWidth)return;const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d')!.drawImage(video,0,0);const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',.95));setDialog(null);if(blob)await loadFile(side,blob);}
   async function exportPng(){setBusy(t("Creating your report on this device…"));try{await document.fonts.ready;const report=document.querySelector<HTMLElement>('.print-report');if(!report)throw new Error('Report is unavailable.');await exportReport(report,mode,created,language);}catch{setError(t("Could not export the report. Try again or use Save PDF."));}finally{setBusy('');}}
   function showDetail(key: Side,id:string){chooseSide(key);setMetricId(id);setEditing(false);setStep(1);setShowLines(true);}
@@ -214,7 +229,7 @@ export default function App() {
     </header>
 
     <main id="main" tabIndex={-1} className={`main-content step-${step}`}>
-      <div className="workspace-topline"><div className="workspace-name"><span className="workspace-orb"><ScanFace size={14}/></span>Personal face studio<span className="version-label">v1.1.1</span></div><button className="text-button quiet" aria-label={t(glass?"Reduce transparency":"Enable liquid glass")} onClick={()=>setGlass(value=>!value)} aria-pressed={!glass}><SlidersHorizontal size={14}/><span className="transparency-label">{glass?t("Reduce transparency"):t("Enable liquid glass")}</span></button></div>
+      <div className="workspace-topline"><div className="workspace-name"><span className="workspace-orb"><ScanFace size={14}/></span>Personal face studio<span className="version-label">v1.2.0</span></div><button className="text-button quiet" aria-label={t(glass?"Reduce transparency":"Enable liquid glass")} onClick={()=>setGlass(value=>!value)} aria-pressed={!glass}><SlidersHorizontal size={14}/><span className="transparency-label">{glass?t("Reduce transparency"):t("Enable liquid glass")}</span></button></div>
       <div className="page-heading"><div><p className="intro-label">{t("A closer look, on your terms.")}</p><h1 ref={titleRef} tabIndex={-1}>{step===0?<>{t("Know your angles.")}<br/><span>{t("See what adds up.")}</span></>:step===1?t("Behind every measurement."):t("Your face, in perspective.")}</h1><p className="page-description">{step===0?t("Explore your proportions, trace every measurement, and keep your photos to yourself."):step===1?t("Check the points. Follow the lines. You stay in control."):t("Your results in one place. Export them only when you choose.")}</p></div>{step>0&&<button className="secondary-button" onClick={()=>setStep(step===2?1:0)}><ArrowLeft size={15}/>{step===2?t("Review again"):t("Back to photos")}</button>}</div>
 
       <nav className="step-navigation" aria-label={t("Analysis steps")}>
@@ -228,9 +243,14 @@ export default function App() {
           <div className="section-heading"><div><h2>{t("Start with your angle.")}</h2><p>{t("Choose what you want to explore.")}</p></div><span className="small-index"><Focus size={20} strokeWidth={1.2}/></span></div>
           <ReferencePicker reference={reference} onChange={setReference} disabled={!!busy}/>
           <div className="mode-control glass" role="group" aria-label={t("Analysis mode")}><span className="mode-indicator" style={{transform:`translateX(${modes.findIndex(item=>item.id===mode)*100}%)`}}/>{modes.map(item=><button key={item.id} aria-pressed={mode===item.id} disabled={!!busy} className={mode===item.id?'selected':''} onClick={()=>chooseMode(item.id)}><span>{t(item.title)}</span><small>{t(item.subtitle)}</small></button>)}</div>
-          <div className={`upload-grid ${sides.length===1?'single':''}`}>{sides.map(key=><UploadCard key={key} side={key} photo={photos[key]} disabled={!!busy} onFile={file=>loadFile(key,file)} onRemove={()=>putPhoto(key)} onCamera={()=>{chooseSide(key);setDialog('camera');}}/>)}</div>
+          <div className={`upload-grid ${sides.length===1?'single':''}`}>{sides.map(key=><UploadCard key={key} side={key} photo={photos[key]} disabled={!!busy} next={readyPhotos>0&&missingSide===key} onFile={file=>loadFile(key,file)} onRemove={()=>putPhoto(key)} onCamera={()=>{chooseSide(key);setDialog('camera');}}/>)}</div>
           <div className="upload-format"><FileImage size={13}/><span>{t("JPG, PNG, WebP · up to 20 MB per photo")}</span></div>
-          <button className="primary-button wide" disabled={!hasPhotos||!!busy} onClick={startAnalysis}>{busy?<><span className="spinner"/>{t(busy)}</>:<>{t("Start analysis")}<ArrowRight size={17}/></>}</button>
+          <div ref={nextActionRef} className={`next-action ${hasPhotos&&!busy?'is-ready':''}`}>
+            <div className="next-action-heading"><strong>{t(hasPhotos?'Next: measurements':'Add your photos')}</strong><span>{readyPhotos}/{sides.length} {t('ready')}</span></div>
+            <p id="upload-next-status" role="status">{busy?t(busy):t(hasPhotos?'Your photos are ready. Start the scan, then review the points.':readyPhotos===0?(mode==='full'?'Add a front and a side photo, or choose a single view above.':'Choose a photo above to continue.'):missingSide==='profile'?'Add a side photo to complete Full mode.':'Add a front photo to complete Full mode.')}</p>
+            <button ref={startButtonRef} className="primary-button wide next-button" aria-describedby="upload-next-status" disabled={!hasPhotos||!!busy} onClick={startAnalysis}>{busy?<><span className="spinner"/>{t('Preparing photo…')}</>:<>{t("Start analysis")}<ArrowRight size={18}/></>}</button>
+            {mode==='full'&&readyPhotos===1&&<button className="single-view-link text-button" disabled={!!busy} onClick={()=>{chooseMode(photos.front?'front':'profile');pendingUploadGuide.current=true;}}>{t(photos.front?'Use front photo only':'Use side photo only')}<ArrowRight size={14}/></button>}
+          </div>
           <p className="local-note"><LockKeyhole size={12}/>{t("Your photos stay on your device. No account. No uploads.")}</p>
         </div>
         <div className="preview-panel" onPointerMove={tiltPreview} onPointerLeave={event=>{const target=event.currentTarget.querySelector<HTMLElement>('.illustration-motion');if(target)target.style.transform='perspective(900px) rotateX(0deg) rotateY(0deg)';}}>
@@ -255,11 +275,14 @@ export default function App() {
           {editing?<>
             <p className="editor-instructions">{pointInstructions}</p>
             <div className="editor-guide"><span className="guide-number">{donePoints}/{definitions[side].length}</span><div><strong>{donePoints===definitions[side].length?t("All points are in place."):t("Follow one point at a time.")}</strong><p>{donePoints===definitions[side].length?t("Check the points on your photo before continuing."):t("Find the next point in the selector below the photo.")}</p></div></div>
+            <div className="confirm-action glass">
+              <p id="confirm-next-status" className="confirm-status">{busy?t(busy):donePoints===definitions[side].length?t('Review the points, then continue below.'):`${donePoints}/${definitions[side].length} ${t('landmarks placed')}`}</p>
+              <button ref={confirmButtonRef} className="primary-button wide next-button" aria-describedby="confirm-next-status confirm-note" onClick={confirmSide} disabled={!!busy||donePoints<definitions[side].length}>{busy?<><span className="spinner"/>{t('Analyzing…')}</>:sides.some(key=>key!==side&&!photos[key]?.confirmed)?<>{t("Confirm & continue")}<ArrowRight size={16}/></>:<>{t("Confirm & create report")}<CheckCheck size={16}/></>}</button>
+              <p id="confirm-note" className="confirm-note">{t("Continuing confirms the landmark positions on this photo.")}</p>
+            </div>
             {<button className="secondary-button wide" onClick={()=>autoDetect(side)} disabled={!!busy}><ScanFace size={16}/>{Object.keys(photo.points).length?t("Detect landmarks again"):t("Detect landmarks automatically")}</button>}
             {side==='profile'&&<div className="profile-jaw-review"><div className="quiet-notice"><Info size={16}/><p>{t("Profile points are estimates. Check the visible jaw corner, near-ear point and chin before confirming. These are surface contours, not bone boundaries.")}</p></div><div className="profile-point-shortcuts" role="group" aria-label={t('Review profile jaw points')}>{(['jawAngle','ramusTop','chin'] as const).map(key=><button key={key} className="secondary-button" aria-pressed={selectedPoint===key} disabled={!!busy} onClick={()=>setSelectedPoint(key)}>{t(key==='jawAngle'?'Jaw corner':key==='ramusTop'?'Near-ear point':'Chin point')}</button>)}</div></div>}
             <AngleReadings photo={photo} side={side}/><div className="quality-summary"><span>{t("Input quality")}</span><strong>{photo.quality.warnings.length?t("Please review"):t("Lighting & detail look sufficient")}</strong><p>{photo.quality.warnings.map(t).join(' ')||t("Basic lighting and detail checks do not guarantee correct pose or landmarks.")}</p></div>
-            <button className="primary-button wide" onClick={confirmSide} disabled={!!busy||donePoints<definitions[side].length}>{sides.some(key=>key!==side&&!photos[key]?.confirmed)?<>{t("Confirm & continue")}<ArrowRight size={16}/></>:<>{t("Confirm & create report")}<CheckCheck size={16}/></>}</button>
-            <p className="confirm-note">{t("Continuing confirms the landmark positions on this photo.")}</p>
           </>:<>
             <p className="explore-hint"><Focus size={16}/>{t('Tap any line to see its name, endpoints, and role in the score.')}</p><div className="metric-list">{metrics.map(metric=><button key={metric.id} className={`metric-row ${selectedMetric?.id===metric.id?'active':''}`} onClick={()=>{setMetricId(metric.id);setLineId('');}}><span>{t(metric.name)}<small>{t(metric.display)}</small></span><span className="metric-value">{scoreText(metric.score, language)}<ChevronRight size={14}/></span></button>)}</div>
             {visibleLines.length>0&&<section className="line-explainer" aria-label={t('Explore each line')}>

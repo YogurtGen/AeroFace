@@ -46,10 +46,14 @@ export function frontDetails(points:Points,width:number,height:number){
   const p=toPixels(points,width,height);
   const left={x:(p.eyeLO.x+p.eyeLI.x)/2,y:(p.eyeLO.y+p.eyeLI.y)/2},right={x:(p.eyeRI.x+p.eyeRO.x)/2,y:(p.eyeRI.y+p.eyeRO.y)/2};
   const roll=Math.atan2(right.y-left.y,right.x-left.x),degrees=(angle:number)=>Math.atan2(Math.sin(angle),Math.cos(angle))*180/Math.PI;
+  const eyeSpacing=distance(left,right),mouthWidth=distance(p.mouthL,p.mouthR),cheekWidth=distance(p.cheekL,p.cheekR);
   return [
     {id:'left-eye-tilt',name:'Left eye-corner tilt',value:degrees(Math.atan2(p.eyeLI.y-p.eyeLO.y,p.eyeLI.x-p.eyeLO.x)-roll),unit:'degrees'},
     {id:'right-eye-tilt',name:'Right eye-corner tilt',value:degrees(roll-Math.atan2(p.eyeRO.y-p.eyeRI.y,p.eyeRO.x-p.eyeRI.x)),unit:'degrees'},
-    {id:'mouth-cheek-ratio',name:'Mouth-to-cheek width',value:distance(p.mouthL,p.mouthR)/distance(p.cheekL,p.cheekR),unit:'ratio'},
+    {id:'mouth-cheek-ratio',name:'Mouth-to-cheek width',value:mouthWidth/cheekWidth,unit:'ratio'},
+    {id:'eye-cheek-ratio',name:'Eye spacing / cheek width',value:eyeSpacing/cheekWidth,unit:'ratio'},
+    {id:'eye-mouth-ratio',name:'Eye-to-mouth height / eye spacing',value:lineDistance(midpoint(p.mouthL,p.mouthR),left,right)/eyeSpacing,unit:'ratio'},
+    {id:'mouth-eye-ratio',name:'Mouth width / eye spacing',value:mouthWidth/eyeSpacing,unit:'ratio'},
   ] as const;
 }
 export function contourAngles(points:Points,width:number,height:number){
