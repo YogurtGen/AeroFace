@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mapLandmarks,type Landmark} from '../src/landmarks';
-import {contourAngles,calculateMetrics,tierLabel,type Points} from '../src/analysis';
+import {contourAngles,calculateMetrics,tierLabel,validatePoints,type Points} from '../src/analysis';
 import {radarPoint,radarPoints,radarLabels} from '../src/radar';
 const points:Points={nasion:{x:.56,y:.28},noseTip:{x:.74,y:.43},noseBase:{x:.62,y:.48},upperLip:{x:.65,y:.54},lowerLip:{x:.62,y:.6},chin:{x:.62,y:.7},jawAngle:{x:.42,y:.7},ramusTop:{x:.29,y:.4}};
 function mesh(){const result:Landmark[]=Array.from({length:478},()=>({x:.5,y:.5,z:0}));for(const[key,index]of Object.entries({nasion:168,noseTip:4,noseBase:2,upperLip:0,lowerLip:17,chin:199,jawAngle:172,ramusTop:234}))result[index]={...points[key],z:-.2};result[454]={x:.42,y:.4,z:.2};return result;}
@@ -18,6 +18,14 @@ test('a frontal or incomplete mesh is not silently treated as a side-profile rea
   const source=mesh();source[454]={x:.71,y:.4,z:-.2};assert.throws(()=>mapLandmarks('profile',source,800,1000),/side profile/);
   source[234].z=undefined;assert.throws(()=>mapLandmarks('profile',source,800,1000),/verified/);
   assert.throws(()=>mapLandmarks('profile',[],800,1000));
+});
+test('an inverted jaw contour is rejected in either profile direction',()=>{
+  for(const mirrored of[false,true]){
+    const source=Object.fromEntries(Object.entries(points).map(([id,p])=>[id,{x:mirrored?1-p.x:p.x,y:p.y}]));
+    assert.doesNotThrow(()=>validatePoints('profile',source,800,1000));
+    assert.throws(()=>validatePoints('profile',{...source,jawAngle:{...source.noseTip,y:source.chin.y}},800,1000),/jaw corner/);
+    assert.throws(()=>validatePoints('profile',{...source,jawAngle:{...source.ramusTop,y:.3}},800,1000),/jaw corner/);
+  }
 });
 test('chin angle uses the actual pixel aspect ratio and is invariant to scale and reflection',()=>{
   const first=contourAngles(points,800,1000);assert.equal(first.length,3);assert.equal(first[2].degrees,90);

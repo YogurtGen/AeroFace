@@ -15,3 +15,7 @@ AeroFace therefore retains one documented 0–10 convention with Man/Woman termi
 The current improvements are automatic reversible face framing, six framing/mirror inference checks, visible input sensitivity and a locally fitted monotone consensus mapping. No real consensus data has been supplied, so there is no active default calibration or demonstrated accuracy gain. [Collection and validation requirements](calibration.md) keep training and validation separate by person and use independent ratings directly on the chosen 0–10 convention.
 
 All current image processing and inference remain in the browser. GitHub Pages distributes static files, not photo inference. Any future remote model would require a separate, explicit choice after the provider, transmitted data and retention behavior can be reviewed; no remote-image path is implemented.
+
+## Profile landmarks
+
+The publisher's [Face Mesh V2 model card](https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Face%20Mesh%20V2.pdf) identifies large head turns beyond 80 degrees as outside its intended inputs. Full side profiles can therefore yield missing or misplaced surface points. Carrying a successful detection through an exact crop transform fixes a processing regression, not that model limitation. The app validates basic jaw ordering and keeps the three relevant points directly editable. Facial fat percentage, skeletal forward growth and cheekbone prominence are not added as inferred scores without suitable labeled validation.

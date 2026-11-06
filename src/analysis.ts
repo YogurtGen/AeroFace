@@ -122,6 +122,13 @@ export function validatePoints(side: Side, points: Points, width: number, height
   if (pairs.some(([a, b]) => distance(p[a], p[b]) < minSize)) throw new Error('Some points are too close together. Check their positions.');
   if (side === 'front' && !(p.eyeLO.x < p.eyeLI.x && p.eyeLI.x < p.eyeRI.x && p.eyeRI.x < p.eyeRO.x)) throw new Error('Eye corners are out of order. Left and right refer to the photo.');
   if (p.noseBase.y >= p.chin.y) throw new Error('The chin point must be below the nose base.');
+  if(side==='profile'){
+    const length=distance(p.nasion,p.chin),down={x:(p.chin.x-p.nasion.x)/length,y:(p.chin.y-p.nasion.y)/length};
+    const normal={x:down.y,y:-down.x},sign=Math.sign((p.noseTip.x-p.nasion.x)*normal.x+(p.noseTip.y-p.nasion.y)*normal.y);
+    const behind=(p.chin.x-p.jawAngle.x)*normal.x*sign+(p.chin.y-p.jawAngle.y)*normal.y*sign;
+    const below=(p.jawAngle.x-p.ramusTop.x)*down.x+(p.jawAngle.y-p.ramusTop.y)*down.y;
+    if(behind<=0||below<=0)throw new Error('Check the jaw corner: it must be behind the chin and below the near-ear point.');
+  }
 }
 export function calculateMetrics(side: Side, points: Points, width: number, height: number): Metric[] {
   validatePoints(side, points, width, height);

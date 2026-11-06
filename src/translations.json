@@ -505,5 +505,11 @@
   "AeroFace uses 0–10 app bands. FreePSL describes a different 1–8 scale; the scores are not interchangeable.": "AeroFace memakai tier aplikasi 0–10. FreePSL menjelaskan skala 1–8 yang berbeda; nilainya tidak bisa disamakan.",
   "Facial harmony · geometry": "Harmoni wajah · geometri",
   "Harmony profile · 2D proportions, separate from the AI estimate": "Profil harmoni · proporsi 2D, terpisah dari perkiraan AI",
-  "The front face is eye-aligned and evaluated at three framing sizes with paired mirrors. FaceONNX ResNet-18 outputs are scaled to 0–10 and summarized by their median. The displayed range shows input sensitivity. A consensus mapping is applied only after a valid local ratings import; geometry is not added to the AI estimate.": "Wajah depan disejajarkan menurut mata dan dinilai pada tiga ukuran bingkai dengan pasangan cermin. Output FaceONNX ResNet-18 diskalakan ke 0–10 dan dirangkum dengan median. Rentang yang ditampilkan menunjukkan kepekaan terhadap input. Pemetaan konsensus hanya diterapkan setelah impor nilai lokal yang valid; geometri tidak ditambahkan ke perkiraan AI."
+  "The front face is eye-aligned and evaluated at three framing sizes with paired mirrors. FaceONNX ResNet-18 outputs are scaled to 0–10 and summarized by their median. The displayed range shows input sensitivity. A consensus mapping is applied only after a valid local ratings import; geometry is not added to the AI estimate.": "Wajah depan disejajarkan menurut mata dan dinilai pada tiga ukuran bingkai dengan pasangan cermin. Output FaceONNX ResNet-18 diskalakan ke 0–10 dan dirangkum dengan median. Rentang yang ditampilkan menunjukkan kepekaan terhadap input. Pemetaan konsensus hanya diterapkan setelah impor nilai lokal yang valid; geometri tidak ditambahkan ke perkiraan AI.",
+  "Profile points are estimates. Check the visible jaw corner, near-ear point and chin before confirming. These are surface contours, not bone boundaries.": "Titik profil merupakan perkiraan. Periksa sudut rahang yang terlihat, titik dekat telinga, dan dagu sebelum konfirmasi. Ini adalah kontur permukaan, bukan batas tulang.",
+  "Review profile jaw points": "Periksa titik rahang profil",
+  "Jaw corner": "Sudut rahang",
+  "Near-ear point": "Titik dekat telinga",
+  "Chin point": "Titik dagu",
+  "Check the jaw corner: it must be behind the chin and below the near-ear point.": "Periksa sudut rahang: posisinya harus di belakang dagu dan di bawah titik dekat telinga."
 }

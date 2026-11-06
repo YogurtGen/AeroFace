@@ -1,12 +1,14 @@
 import { type Points, type Side } from './analysis';
 import { mapLandmarks, type Landmark } from './landmarks';
 import type { Appearance } from './appearance';
-import { faceFrame } from './framing';
+import { faceFrame, reframePoints } from './framing';
 export type Photo = {
   url: string; blob: Blob; width: number; height: number;
   points: Points; source: 'auto' | 'manual'; confirmed: boolean;
   appearance?: Appearance;
   originalBlob?: Blob; framing?: 'face'|'unavailable';
+  preparedPoints?: Points;
+  framingSource?: ReturnType<typeof faceFrame>&{width:number;height:number};
   quality: { light: number; detail: number; warnings: string[] };
 };
 export async function readPhoto(file: Blob): Promise<Photo> {
@@ -54,15 +56,16 @@ export async function transformPhoto(photo: Photo, operation: 'rotate' | 'crop')
   }
   bitmap.close(); return {...await photoFromCanvas(canvas),originalBlob:photo.originalBlob};
 }
-export async function fitPhotoToFace(photo:Photo,mesh:Landmark[]):Promise<Photo>{
+export async function fitPhotoToFace(photo:Photo,mesh:Landmark[],points?:Points):Promise<Photo>{
   const frame=faceFrame(mesh,photo.width,photo.height),canvas=document.createElement('canvas');
+  const preparedPoints=points?reframePoints(points,frame,photo.width,photo.height):undefined;
   canvas.width=frame.pixels;canvas.height=frame.pixels;
   const bitmap=await createImageBitmap(photo.blob);
   try{
     const context=canvas.getContext('2d')!,scale=frame.pixels/frame.size;
     context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
     context.scale(scale,scale);context.drawImage(bitmap,-frame.x,-frame.y);
-    return {...await photoFromCanvas(canvas),originalBlob:photo.originalBlob??photo.blob,framing:'face'};
+    return {...await photoFromCanvas(canvas),originalBlob:photo.originalBlob??photo.blob,framing:'face',preparedPoints,framingSource:{...frame,width:photo.width,height:photo.height}};
   }finally{bitmap.close();}
 }
 let worker: Worker | null = null;
@@ -72,6 +75,12 @@ export function stopDetector() { cancelDetection?.(); cancelDetection = null; wo
 export type DetectionPhase = 'runtime'|'model'|'detecting'|'geometry'|'rating'|'visualizing';
 export const detectFront=(photo:Photo,onProgress?:(phase:DetectionPhase)=>void)=>detectLandmarks(photo,'front',onProgress);
 export async function detectLandmarks(photo: Photo, side:Side, onProgress?: (phase:DetectionPhase)=>void): Promise<Points> {
+  if(side==='profile'&&photo.originalBlob&&photo.framingSource){
+    const frame=photo.framingSource;
+    const original={...photo,blob:photo.originalBlob,width:frame.width,height:frame.height};
+    const {points}=await detectFace(original,side,onProgress);
+    return reframePoints(points,frame,frame.width,frame.height);
+  }
   return (await detectFace(photo,side,onProgress)).points;
 }
 export async function detectFace(photo:Photo,side:Side,onProgress?:(phase:DetectionPhase)=>void):Promise<{points:Points;mesh:Landmark[]}>{

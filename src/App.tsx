@@ -151,9 +151,9 @@ export default function App() {
   async function loadFile(key: Side,file: Blob){scanController.current?.abort();stopDetector();stopAppearance();const epoch=++epochRef.current;setBusy(t("Reading your photo locally…"));setError('');try{const next=await readPhoto(file);if(epoch!==epochRef.current){revokePhoto(next);return;}putPhoto(key,next);
       setBusy(t('Fitting the face to a square…'));
       try{
-        const {mesh}=await detectFace(next,key);
+        const {mesh,points}=await detectFace(next,key);
         if(epoch!==epochRef.current)return;
-        const fitted=await fitPhotoToFace(next,mesh);
+        const fitted=await fitPhotoToFace(next,mesh,key==='profile'?points:undefined);
         if(epoch===epochRef.current)putPhoto(key,fitted);else revokePhoto(fitted);
       }catch{if(epoch===epochRef.current)putPhoto(key,{...next,framing:'unavailable'});}
     }catch(err){if(epoch===epochRef.current)setError((err as Error).message);}finally{if(epoch===epochRef.current)setBusy('');}}
@@ -163,7 +163,9 @@ export default function App() {
     scanController.current?.abort();const controller=new AbortController();scanController.current=controller;
     const epoch=++epochRef.current,startedAt=performance.now();setPhase('runtime');setDetecting(true);setBusy(t('Finding landmarks on your device…'));setError('');
     try{
-      const points=await detectLandmarks(current,key,value=>{if(epoch===epochRef.current)setPhase(value);});
+      const prepared=!Object.keys(current.points).length?current.preparedPoints:undefined;
+      const points=prepared??await detectLandmarks(current,key,value=>{if(epoch===epochRef.current)setPhase(value);});
+      if(prepared)setPhase('geometry');
       if(epoch!==epochRef.current)return;
       let estimate:Photo['appearance'];
       if(key==='front'){
@@ -173,11 +175,11 @@ export default function App() {
       if(epoch!==epochRef.current)return;
       setPhase('visualizing');setBusy(t('Visualizing your measurements…'));
       await finishScanAnimation(startedAt,controller.signal);
-      if(epoch===epochRef.current&&!controller.signal.aborted&&photosRef.current[key]?.url===current.url)putPhoto(key,{...current,points,appearance:estimate,source:'auto',confirmed:false});
+      if(epoch===epochRef.current&&!controller.signal.aborted&&photosRef.current[key]?.url===current.url)putPhoto(key,{...current,points,preparedPoints:undefined,appearance:estimate,source:'auto',confirmed:false});
     }catch(err){if(epoch===epochRef.current)setError((err as Error).message);}
     finally{if(epoch===epochRef.current){setBusy('');setDetecting(false);scanController.current=null;}}
   }
-  function updatePoint(key: string,point: Point){if(!photo)return;putPhoto(side,{...photo,points:{...photo.points,[key]:point},appearance:undefined,confirmed:false});}
+  function updatePoint(key: string,point: Point){if(!photo)return;putPhoto(side,{...photo,points:{...photo.points,[key]:point},preparedPoints:undefined,appearance:undefined,confirmed:false});}
   async function transform(operation:'rotate'|'crop'|'restore'){if(!photo)return;const epoch=++epochRef.current;setBusy(t("Adjusting your photo…"));setError('');try{const next=operation==='restore'?await readPhoto(photo.originalBlob??photo.blob):await transformPhoto(photo,operation);if(epoch===epochRef.current){putPhoto(side,next);setZoom(1);setEditing(true);setSelectedPoint(definitions[side][0].id);}else revokePhoto(next);}catch{if(epoch===epochRef.current)setError(t("Could not adjust this photo. Please choose it again."));}finally{if(epoch===epochRef.current)setBusy('');}}
   async function confirmSide(){
     if(!photo)return;
@@ -212,7 +214,7 @@ export default function App() {
     </header>
 
     <main id="main" tabIndex={-1} className={`main-content step-${step}`}>
-      <div className="workspace-topline"><div className="workspace-name"><span className="workspace-orb"><ScanFace size={14}/></span>Personal face studio<span className="version-label">v1.1</span></div><button className="text-button quiet" aria-label={t(glass?"Reduce transparency":"Enable liquid glass")} onClick={()=>setGlass(value=>!value)} aria-pressed={!glass}><SlidersHorizontal size={14}/><span className="transparency-label">{glass?t("Reduce transparency"):t("Enable liquid glass")}</span></button></div>
+      <div className="workspace-topline"><div className="workspace-name"><span className="workspace-orb"><ScanFace size={14}/></span>Personal face studio<span className="version-label">v1.1.1</span></div><button className="text-button quiet" aria-label={t(glass?"Reduce transparency":"Enable liquid glass")} onClick={()=>setGlass(value=>!value)} aria-pressed={!glass}><SlidersHorizontal size={14}/><span className="transparency-label">{glass?t("Reduce transparency"):t("Enable liquid glass")}</span></button></div>
       <div className="page-heading"><div><p className="intro-label">{t("A closer look, on your terms.")}</p><h1 ref={titleRef} tabIndex={-1}>{step===0?<>{t("Know your angles.")}<br/><span>{t("See what adds up.")}</span></>:step===1?t("Behind every measurement."):t("Your face, in perspective.")}</h1><p className="page-description">{step===0?t("Explore your proportions, trace every measurement, and keep your photos to yourself."):step===1?t("Check the points. Follow the lines. You stay in control."):t("Your results in one place. Export them only when you choose.")}</p></div>{step>0&&<button className="secondary-button" onClick={()=>setStep(step===2?1:0)}><ArrowLeft size={15}/>{step===2?t("Review again"):t("Back to photos")}</button>}</div>
 
       <nav className="step-navigation" aria-label={t("Analysis steps")}>
@@ -254,7 +256,7 @@ export default function App() {
             <p className="editor-instructions">{pointInstructions}</p>
             <div className="editor-guide"><span className="guide-number">{donePoints}/{definitions[side].length}</span><div><strong>{donePoints===definitions[side].length?t("All points are in place."):t("Follow one point at a time.")}</strong><p>{donePoints===definitions[side].length?t("Check the points on your photo before continuing."):t("Find the next point in the selector below the photo.")}</p></div></div>
             {<button className="secondary-button wide" onClick={()=>autoDetect(side)} disabled={!!busy}><ScanFace size={16}/>{Object.keys(photo.points).length?t("Detect landmarks again"):t("Detect landmarks automatically")}</button>}
-            {side==='profile'&&<div className="quiet-notice"><Info size={16}/><p>{t("Profile points are estimated automatically. Check the near-ear, jaw and chin points carefully. Ramus measures a surface contour, not bone length.")}</p></div>}
+            {side==='profile'&&<div className="profile-jaw-review"><div className="quiet-notice"><Info size={16}/><p>{t("Profile points are estimates. Check the visible jaw corner, near-ear point and chin before confirming. These are surface contours, not bone boundaries.")}</p></div><div className="profile-point-shortcuts" role="group" aria-label={t('Review profile jaw points')}>{(['jawAngle','ramusTop','chin'] as const).map(key=><button key={key} className="secondary-button" aria-pressed={selectedPoint===key} disabled={!!busy} onClick={()=>setSelectedPoint(key)}>{t(key==='jawAngle'?'Jaw corner':key==='ramusTop'?'Near-ear point':'Chin point')}</button>)}</div></div>}
             <AngleReadings photo={photo} side={side}/><div className="quality-summary"><span>{t("Input quality")}</span><strong>{photo.quality.warnings.length?t("Please review"):t("Lighting & detail look sufficient")}</strong><p>{photo.quality.warnings.map(t).join(' ')||t("Basic lighting and detail checks do not guarantee correct pose or landmarks.")}</p></div>
             <button className="primary-button wide" onClick={confirmSide} disabled={!!busy||donePoints<definitions[side].length}>{sides.some(key=>key!==side&&!photos[key]?.confirmed)?<>{t("Confirm & continue")}<ArrowRight size={16}/></>:<>{t("Confirm & create report")}<CheckCheck size={16}/></>}</button>
             <p className="confirm-note">{t("Continuing confirms the landmark positions on this photo.")}</p>
