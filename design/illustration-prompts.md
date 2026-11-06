@@ -11,3 +11,10 @@ These earlier proportion studies were generated with the built-in image tool. Th
 > Create a matching FRONT-FACING head-and-neck outline for the same facial-analysis web app, using this side-profile drawing only as the visual-style and character reference. One original adult male head looking straight forward, neutral expression, normal natural human proportions, short swept-back hair, both ears visible. Extremely simple line art: a clean outer face silhouette, one simple hair cap with at most three internal curves, minimal brows and eyes, a few nose and lip contours, a clearly defined natural jaw and chin, and two neck/shoulder lines. Thin muted blue-gray strokes around #8194ad. Lots of open space; no skin texture, hatching, shaded fills, fine hair strands, 3D rendering or ornamental detail. This must stay clear when displayed small in a minimal pale blue interface. One head only, centered with breathing room on true transparent alpha background. No labels, dots, measurement lines, words or frame.
 
 Tier variants and both Man/Woman references use the current hairless SVG contour language. Differences come from eyes, cheeks, jaw and chin proportions. They are illustrative examples, not a claim that a particular anatomy determines a tier.
+
+## Structural references for the revised SVG portraits
+
+- [John Asaro — Original Planes of the Head](https://www.planesofthehead.com/original_head.php): brows, eye sockets, cheek planes, jaw and chin construction.
+- [Andrew Loomis — Drawing the Head and Hands, plate 38](https://en.wikisource.org/wiki/Page:Andrew_Loomis,_Drawing_the_Head_and_Hands.pdf/38): front/profile proportion and feature placement.
+
+These references were reviewed online to guide construction, not used as tier standards. The application contains original simplified SVG paths with hairless silhouettes, restrained cheek contours and blue-gray strokes. Upper-tier outlines stay lean rather than expanding in width; lower-tier examples vary multiple proportions. No referenced artwork was copied into the application.
