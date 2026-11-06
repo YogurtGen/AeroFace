@@ -1,6 +1,6 @@
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
 await mkdir('test-results', {recursive:true});
@@ -31,6 +31,21 @@ const frontPoints={eyeLO:{x:.28,y:.37},eyeLI:{x:.4,y:.37},eyeRI:{x:.6,y:.37},eye
 const profilePoints={nasion:{x:.56,y:.28},noseTip:{x:.74,y:.43},noseBase:{x:.62,y:.48},upperLip:{x:.65,y:.54},lowerLip:{x:.64,y:.59},chin:{x:.62,y:.7},jawAngle:{x:.34,y:.63},ramusTop:{x:.29,y:.4}};
 async function placePoints(points){let count=0;for(const [key,p] of Object.entries(points)){await page.locator('#point-selector').selectOption(key);const svg=page.locator('.measurement-overlay'),box=await svg.boundingBox();await svg.click({position:{x:p.x*box.width,y:p.y*box.height}});count++;assert.equal(await page.locator('.measure-point').count(),count,`point ${key} must be placed`);}}
 async function upload(side,buffer,mimeType='image/png',name='fixture.png'){await page.getByTestId(`upload-${side}`).setInputFiles({name,mimeType,buffer});await page.locator('.upload-card.has-photo').first().waitFor();await page.locator('.primary-button.wide').filter({hasText:'Start analysis'}).waitFor();}
+async function downloadImage(name,withPhotos,button='Download image'){
+  const pending=page.waitForEvent('download');await page.getByRole('button',{name:button,exact:true}).click();
+  const download=await pending;await download.saveAs(`test-results/${label}-${name}.png`);
+  const data=await readFile(await download.path());
+  assert.equal(data.readUInt32BE(16),1588,'PNG keeps its A4 width at 2× density on every device');
+  assert.ok(data.readUInt32BE(20)>=2246,'the whole report fits at least one A4 page');
+  const warmPixels=await page.evaluate(async value=>{
+    const bytes=Uint8Array.from(atob(value),char=>char.charCodeAt(0)),image=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
+    const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+    const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);image.close();const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    let count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]>pixels[i+1]+8&&pixels[i+1]>pixels[i+2]+4)count++;return count;
+  },data.toString('base64'));
+  assert.ok(withPhotos?warmPixels>1000:warmPixels===0,'photo inclusion is reflected in the downloaded pixels');
+  assert.equal(await page.locator('iframe').count(),0,'the temporary report and photos are removed');
+}
 try {
   await page.goto(base,{waitUntil:'networkidle',timeout:60000});
   await check('page is active and has the AeroFace application',async()=>{assert.match(await page.title(),/AeroFace/);assert.equal(await page.locator('h1').count(),1);await page.getByRole('button',{name:'Start analysis'}).waitFor();});
@@ -81,9 +96,10 @@ try {
     assert.equal(await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).isChecked(),false);
     let downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Data',exact:true}).click();let download=await downloadPromise;assert.match(download.suggestedFilename(),/\.json$/);await download.saveAs(`test-results/${label}-report.json`);
     const {readFile}=await import('node:fs/promises');const data=JSON.parse(await readFile(`test-results/${label}-report.json`,'utf8'));assert.equal(data.tier,null);assert.equal(data.score,null);assert.equal(data.geometryScore,data.sides.profile.score);assert.equal(data.contourAngles.length,3);assert.equal(data.tierBands.length,8);assert.match(data.rubric,/2.0/);
-    downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Download image'}).click();download=await downloadPromise;assert.match(download.suggestedFilename(),/\.png$/);await download.saveAs(`test-results/${label}-report.png`);
+    await downloadImage('report',false);
     assert.equal(await page.locator('.print-report img').count(),0);await page.emulateMedia({media:'print'});await page.pdf({path:`test-results/${label}-report.pdf`,printBackground:true,preferCSSPageSize:true});await page.emulateMedia({media:'screen'});
     await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).check();assert.equal(await page.locator('.print-report img').count(),1);
+    await downloadImage('profile-photo-report',true);
   });
   await check('metric details, keyboard correction and stale report invalidation',async()=>{
     await page.locator('.report-metric').first().click();await page.locator('.metric-detail').waitFor();assert.match(await page.locator('.metric-detail').innerText(),/Formula/);await page.getByRole('button',{name:'Adjust points'}).click();const point=page.locator('.measure-point').first();await point.focus();await page.keyboard.press('ArrowRight');assert.equal(await page.locator('.step-item').nth(2).isDisabled(),true);
@@ -118,11 +134,22 @@ try {
     const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Data',exact:true}).click();const download=await pending;const {readFile}=await import('node:fs/promises');const data=JSON.parse(await readFile(await download.path(),'utf8'));assert.equal(data.reference,'woman');assert.equal(data.tier,await page.locator('.tier-badge').innerText());assert.equal(data.appearance.model,'FaceONNX ResNet-18');assert.ok(Number.isFinite(data.appearance.raw));assert.equal(data.score,Math.round(Math.max(0,Math.min(10,data.appearance.raw*2))*10)/10);assert.equal(data.geometryScore,data.sides.front.score);
     await page.locator('.tier-scale summary').click();assert.match(await page.locator('.tier-band-list').innerText(),/True Eve/);await page.locator('.tier-scale summary').click();
     await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('group',{name:'Rating reference'}).getByRole('button',{name:'Man',exact:true}).click();await page.getByRole('button',{name:'Close dialog'}).click();
+    await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).check();
     await page.emulateMedia({media:'print'});await page.pdf({path:`test-results/${label}-ai-report.pdf`,printBackground:true,preferCSSPageSize:true});await page.emulateMedia({media:'screen'});
-    const image=page.waitForEvent('download');await page.getByRole('button',{name:'Download image'}).click();await(await image).saveAs(`test-results/${label}-ai-report.png`);
+    await downloadImage('ai-report',true);
   });
   await check('adding the other side creates an equal-weight combined report',async()=>{
     await page.getByRole('button',{name:'Complete your analysis'}).click();await upload('profile',fixture);await page.getByRole('button',{name:'Start analysis'}).click();await page.getByRole('group',{name:'Displayed view'}).getByRole('button',{name:'Side'}).click();await page.locator('.analysis-visuals').waitFor({state:'hidden',timeout:60000});await placePoints(profilePoints);await page.getByRole('button',{name:'Confirm & create report'}).click();await page.getByRole('heading',{name:'Your face, in perspective.'}).waitFor();assert.equal(await page.locator('.report-side').count(),2);await page.screenshot({path:`test-results/${label}-full-report.png`,fullPage:true,animations:"disabled"});
+  });
+  await check('full PNG reports retain both views and support mobile Indonesian exports offline',async()=>{
+    assert.equal(await page.locator('.print-report table').count(),2);await downloadImage('full-photo-report',true);
+    await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'ID Indonesia'}).click();await page.getByRole('button',{name:'Tutup jendela'}).click();
+    await page.getByRole('checkbox',{name:'Sertakan foto & garis ukur'}).uncheck();await page.setViewportSize({width:390,height:844});
+    await page.waitForFunction(()=>document.querySelector('.site-footer')?.textContent.includes('Siap dipakai offline'),{},{timeout:90000});
+    await context.setOffline(true);
+    try{await downloadImage('full-private-id-mobile',false,'Unduh gambar');}finally{await context.setOffline(false);}
+    await page.getByRole('button',{name:'Pengaturan',exact:true}).click();await page.getByRole('button',{name:'EN English'}).click();await page.getByRole('button',{name:'Close dialog'}).click();
+    await page.getByRole('checkbox',{name:'Include photos & measurement lines'}).check();await page.setViewportSize({width:1440,height:1000});
   });
   await check('no photo uploads or external requests, and no persistent user storage',async()=>{assert.deepEqual(external,[]);assert.deepEqual(nonGet,[]);assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);assert.deepEqual(pageErrors,[]);});
   await check('cached app, worker and report work offline after reload',async()=>{

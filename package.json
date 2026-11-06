@@ -13,6 +13,7 @@
   "dependencies": {
     "@fontsource/geist": "^5.3.0",
     "@mediapipe/tasks-vision": "^1.2.2",
+    "html-to-image": "1.11.13",
     "lucide-react": "^1.69.0",
     "onnxruntime-web": "1.31.1",
     "react": "^19.3.1",
