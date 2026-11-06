@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateMetrics, targetScore, totalScore, scoreMetrics, scoreTier, validatePoints, frontDetails, nearbyTier, type Points } from '../src/analysis';
+import { calculateMetrics, targetScore, totalScore, scoreMetrics, scoreTier, validatePoints, frontDetails, nearbyTier, observedTiers, observedTierLabel, type Points } from '../src/analysis';
 import { measurementLines } from '../src/measurement-lines';
 import { translate } from '../src/i18n';
 
@@ -48,6 +48,13 @@ test('nearby tier notes describe the existing threshold without changing the ass
   assert.deepEqual(nearbyTier(5.8,'woman'),{label:'HTB',threshold:6,remaining:.2});
   for(const value of[4.7,5.7,6,9.9,10])assert.equal(nearbyTier(value),null);
   assert.equal(scoreTier(5.9).label,'MTN');assert.throws(()=>nearbyTier(NaN));
+});
+test('observed tier spans follow actual variant scores rather than rounded range endpoints',()=>{
+  assert.equal(observedTierLabel([5.01,5.86,6.03]),'MTN–HTN');
+  assert.equal(observedTierLabel([6.16,6.94,6.3]),'HTN');
+  assert.equal(observedTierLabel([5.6,5.99]),'MTN');
+  assert.deepEqual(observedTiers([6.03,5.4,5.9],'woman'),['MTB','HTB']);
+  assert.throws(()=>observedTierLabel([]));assert.throws(()=>observedTierLabel([NaN]));
 });
 test('additional front details use pixels, correct head roll and swap eye sides under reflection',()=>{
   const points={...front,eyeLO:{x:.28,y:.35},eyeRO:{x:.72,y:.36}};

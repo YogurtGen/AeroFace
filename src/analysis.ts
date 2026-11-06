@@ -33,6 +33,14 @@ export function nearbyTier(score:number,reference:RatingReference='man'){
   if(tier.max===10||remaining<=0||remaining>.2)return null;
   return {label:tierLabel(tier.max,reference),threshold:tier.max,remaining};
 }
+export function observedTiers(scores:number[],reference:RatingReference='man'){
+  return [...new Set([...scores].sort((a,b)=>a-b).map(score=>tierLabel(score,reference)))];
+}
+export function observedTierLabel(scores:number[],reference:RatingReference='man'){
+  const labels=observedTiers(scores,reference);
+  if(!labels.length)throw new Error('At least one score is required.');
+  return labels.length===1?labels[0]:`${labels[0]}–${labels[labels.length-1]}`;
+}
 export function frontDetails(points:Points,width:number,height:number){
   validatePoints('front',points,width,height);
   const p=toPixels(points,width,height);

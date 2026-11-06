@@ -30,6 +30,9 @@ Push to `main`, then choose **Settings → Pages → Source → GitHub Actions**
 - JPEG, PNG and WebP selection, drag and drop, optional camera, rotation and center crop to 3:4.
 - A bundled MediaPipe Face Landmarker detects front and side landmarks in a worker. Profile extraction selects the camera-facing jaw using relative mesh depth and rejects front-facing inputs used as profiles. Near-ear and jaw landmarks remain surface estimates and must be reviewed.
 - A separate FaceONNX ResNet-18 model estimates appearance from an eye-aligned front-face crop in an ONNX Runtime worker. All model, WASM, script and font assets are served from this repository; no cloud inference is used.
+- The current `aligned-six-view-v1` pipeline takes the median of three framing scales and their mirrored counterparts. Reports show their base-model variation range as input sensitivity, not confidence. This adds consistency checks; it does not by itself demonstrate better agreement with human ratings.
+- When the six evaluated variants land in different bands, the report shows their observed tier span, for example MTN–HTN, while retaining the median numeric estimate. This span describes the checks that ran, not a statistical confidence interval. Sub-5 refers to the median estimate. A calibrated span is omitted if any variant falls outside the reference range.
+- Settings can fit an optional local consensus mapping from a ratings CSV. It requires separate people in training and validation, averages at least three raters per photo, and accepts the mapping only when validation MAE improves without worsening RMSE. No consensus mapping is shipped without real labeled data. See [the collection and validation workflow](docs/calibration.md).
 - Side-only reports show geometry and contour angles without assigning an appearance tier. Missing, failed or unsupported appearance inference never falls back to a geometry-derived tier.
 - Every analysis requires explicit user confirmation of the landmark positions. Drag points or use arrow keys (Shift for larger steps).
 - In the measurement explorer, select a metric and tap an individual line on the photo or its legend. Each line explains its name, endpoints, in-photo pixel length, role as a measurement/reference, and relationship to the score. The symmetry axis is labeled as a reference rather than assigned a measured facial length. Profile lip offsets are drawn perpendicular to the nose–chin reference, matching the actual formula.
@@ -39,6 +42,7 @@ Push to `main`, then choose **Settings → Pages → Source → GitHub Actions**
 - Four-axis radar charts show actual geometric metric scores, separately from the AI estimate. Jaw, profile-balance and contextual chin angles are displayed in degrees; the extra chin angle is excluded from geometry scoring.
 - PNG, JSON and print-to-PDF reports generated in the browser. Photo inclusion is off by default. Use the browser's **Save as PDF** destination in the print dialog.
 - Offline support after the status reads **Siap dipakai offline**. Service worker caching is restricted to the build's static application and model files.
+- Online navigation checks for current HTML before falling back to the offline cache. A service-worker update displays a refresh notice and preserves the current photos until the user chooses to refresh.
 
 ## Privacy
 
@@ -62,7 +66,7 @@ Only a successful front appearance estimate receives a community-inspired tier: 
 
 The illustrated guide explains Sub-5 separately, including its overlap with the lower part of MTN/MTB. A “Near” note means the estimate is within 0.2 points of the next app band, not a confidence interval. Additional front readings show head-roll-corrected eye-corner tilt on each side and mouth-to-cheek width. These 2D values are unscored context, included in the screen, PDF, PNG and JSON reports. They do not provide skin, hair-density, facial-fat or population-percentile estimates.
 
-Lines and radar charts explain geometry, not the neural model's decision. Tier outlines are illustrations rather than reference faces or anatomical templates for a score. JSON schema 3 includes separate appearance and geometry values, reference choice, raw appearance output and contextual contour angles. If appearance is unavailable, top-level appearance score and tier are null.
+Lines and radar charts explain geometry, not the neural model's decision. Tier outlines are illustrations rather than reference faces or anatomical templates for a score. JSON schema 4 includes separate appearance and geometry values, reference choice, raw appearance output and contextual contour angles. If appearance is unavailable, top-level appearance score and tier are null.
 
 
 Small images are accepted with a warning below 256 pixels on the shortest edge. Images are never upscaled; lower resolution can reduce landmark reliability.
@@ -91,3 +95,5 @@ node tests/browser.mjs https://yogurtgen.github.io/AeroFace/
 ```
 
 The suite starts and stops its own local preview server when no URL is supplied. Test fixtures, screenshots, downloads and results are written to ignored `test-results/`. The front detector and appearance tests use an official public MediaPipe portrait fixture. Side detection uses a generated synthetic profile render, including a mirrored version. User-supplied photos are tested separately only on the local machine and are not committed.
+
+Uploaded photos are fitted locally to a square around one detected face, including contour padding. If detection fails or the view is unsuitable, the full image is retained. Full photo in the editor restores the uncropped upload and invalidates landmarks and appearance results. Crops do not upscale source pixels; measurements are detected again against the displayed crop. Both blobs remain session-only. Rating conventions and source research are documented in [the research notes](docs/rating-research.md).

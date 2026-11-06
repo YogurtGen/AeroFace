@@ -1,7 +1,8 @@
 import { translate, type Language } from './i18n';
 import { getFontEmbedCSS, toBlob } from 'html-to-image';
-import { RUBRIC, calculateMetrics, requiredSides, scoreMetrics, tierLabel, tiers, totalScore, contourAngles, frontDetails, nearbyTier, type RatingReference, type Mode } from './analysis';
+import { RUBRIC, calculateMetrics, requiredSides, scoreMetrics, tierLabel, observedTiers, observedTierLabel, tiers, totalScore, contourAngles, frontDetails, nearbyTier, type RatingReference, type Mode } from './analysis';
 import type { Photos } from './photos';
+import { calibrateAppearance, type Calibration } from './calibration';
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob), anchor = document.createElement('a');
   anchor.href = url; anchor.download = filename; anchor.click();
@@ -47,19 +48,21 @@ export async function exportReport(report: HTMLElement, mode: Mode, created: Dat
     downloadBlob(blob, `AeroFace-${language==='id'?'rapor':'report'}-${mode}-${created.toISOString().slice(0,10)}.png`);
   } finally { frame.remove(); }
 }
-export function reportData(photos: Photos, mode: Mode, created: Date, language: Language = 'en', reference:RatingReference = 'man') {
+export function reportData(photos: Photos, mode: Mode, created: Date, language: Language = 'en', reference:RatingReference = 'man', calibration:Calibration|null = null) {
   const t=(text:string)=>translate(text,language);
   const sides = Object.fromEntries(requiredSides(mode).map(side=>{const photo=photos[side]!;const metrics=calculateMetrics(side,photo.points,photo.width,photo.height);const score=scoreMetrics(metrics);return [side,{score,source:photo.source,confirmed:photo.confirmed,metrics:metrics.map(({id,name,value,display,score,weight,reference,estimated})=>({id,name:t(name),value,display:t(display),score,weight,reference:t(reference),estimated:!!estimated}))}];}));
   const geometryScore=totalScore(mode,Object.fromEntries(Object.entries(sides).map(([side,data])=>[side,data.score])))!;
-  const appearance=mode!=='profile'?photos.front?.appearance:undefined;
+  const baseAppearance=mode!=='profile'?photos.front?.appearance:undefined;
+  const appearance=baseAppearance?calibrateAppearance(baseAppearance,calibration):undefined;
   return {
-    schemaVersion:3,reference,geometryScore,score:appearance?.score??null,appearance:appearance??null,
-    tier:appearance?tierLabel(appearance.score,reference):null,sub5:appearance?appearance.score<5:null,
-    nearbyTier:appearance?nearbyTier(appearance.score,reference):null,
+    schemaVersion:4,reference,geometryScore,score:appearance?.score??null,appearance:appearance??null,calibrationProfile:calibration,
+    tier:appearance?observedTierLabel(appearance.evaluatedSamples??[appearance.score],reference):null,medianTier:appearance?tierLabel(appearance.score,reference):null,sub5:appearance?appearance.score<5:null,
+    observedTiers:appearance?observedTiers(appearance.evaluatedSamples??[appearance.score],reference):[],
+    nearbyTier:appearance&&observedTiers(appearance.evaluatedSamples??[appearance.score],reference).length===1?nearbyTier(appearance.score,reference):null,
     frontDetails:mode!=='profile'&&photos.front?frontDetails(photos.front.points,photos.front.width,photos.front.height).map(item=>({...item,name:t(item.name),scored:false})):[],
     tierBands:tiers.map(tier=>({...tier,label:tierLabel(tier.min,reference)})),
     contourAngles:mode!=='front'&&photos.profile?contourAngles(photos.profile.points,photos.profile.width,photos.profile.height).map(({id,name,degrees})=>({id,name:t(name),degrees,estimated:true,scored:id!=='chin-contour'})):[],
-    scoring: { appearance:'FaceONNX ResNet-18; BGR means 104/117/123, divided by 255; raw output times two, clipped to 0–10; shared gender model',metric:'10 / (1 + ((value - target) / tolerance)^2)', view:'weighted geometric mean', full:'equal arithmetic mean of front and profile' },
+    scoring: { appearance:'FaceONNX ResNet-18; BGR means 104/117/123, divided by 255; median of 6 framing/mirror views times two, clipped to 0–10; optional user-supplied consensus mapping; shared gender model',metric:'10 / (1 + ((value - target) / tolerance)^2)', view:'weighted geometric mean', full:'equal arithmetic mean of front and profile' },
     tierNote:t('AI estimates and geometric measurements are separate. Lines do not explain the AI decision. Experimental model; not a validated PSL rating.'),
     product: 'AeroFace', rubric: RUBRIC, mode, language, created: created.toISOString(),
     note: t('Subjective proportion rubric; not a medical assessment or objective attractiveness score.'),

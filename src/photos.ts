@@ -1,10 +1,12 @@
 import { type Points, type Side } from './analysis';
 import { mapLandmarks, type Landmark } from './landmarks';
 import type { Appearance } from './appearance';
+import { faceFrame } from './framing';
 export type Photo = {
   url: string; blob: Blob; width: number; height: number;
   points: Points; source: 'auto' | 'manual'; confirmed: boolean;
   appearance?: Appearance;
+  originalBlob?: Blob; framing?: 'face'|'unavailable';
   quality: { light: number; detail: number; warnings: string[] };
 };
 export async function readPhoto(file: Blob): Promise<Photo> {
@@ -50,7 +52,18 @@ export async function transformPhoto(photo: Photo, operation: 'rotate' | 'crop')
     canvas.width = Math.round(width); canvas.height = Math.round(height);
     canvas.getContext('2d')!.drawImage(bitmap, (photo.width - width) / 2, (photo.height - height) / 2, width, height, 0, 0, width, height);
   }
-  bitmap.close(); return photoFromCanvas(canvas);
+  bitmap.close(); return {...await photoFromCanvas(canvas),originalBlob:photo.originalBlob};
+}
+export async function fitPhotoToFace(photo:Photo,mesh:Landmark[]):Promise<Photo>{
+  const frame=faceFrame(mesh,photo.width,photo.height),canvas=document.createElement('canvas');
+  canvas.width=frame.pixels;canvas.height=frame.pixels;
+  const bitmap=await createImageBitmap(photo.blob);
+  try{
+    const context=canvas.getContext('2d')!,scale=frame.pixels/frame.size;
+    context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
+    context.scale(scale,scale);context.drawImage(bitmap,-frame.x,-frame.y);
+    return {...await photoFromCanvas(canvas),originalBlob:photo.originalBlob??photo.blob,framing:'face'};
+  }finally{bitmap.close();}
 }
 let worker: Worker | null = null;
 let cancelDetection: (() => void) | null = null;
@@ -59,6 +72,9 @@ export function stopDetector() { cancelDetection?.(); cancelDetection = null; wo
 export type DetectionPhase = 'runtime'|'model'|'detecting'|'geometry'|'rating'|'visualizing';
 export const detectFront=(photo:Photo,onProgress?:(phase:DetectionPhase)=>void)=>detectLandmarks(photo,'front',onProgress);
 export async function detectLandmarks(photo: Photo, side:Side, onProgress?: (phase:DetectionPhase)=>void): Promise<Points> {
+  return (await detectFace(photo,side,onProgress)).points;
+}
+export async function detectFace(photo:Photo,side:Side,onProgress?:(phase:DetectionPhase)=>void):Promise<{points:Points;mesh:Landmark[]}>{
   stopDetector();
   onProgress?.('runtime');
   worker = new Worker(new URL('analysis-worker.js', new URL(import.meta.env.BASE_URL, location.href)));
@@ -83,7 +99,7 @@ export async function detectLandmarks(photo: Photo, side:Side, onProgress?: (pha
   if (landmarks.length > 1) throw new Error('More than one face was found. Crop the photo to show one face.');
   if (!landmarks.length) throw new Error('No face found. Try a clear, evenly lit photo, or place landmarks manually.');
   onProgress?.('geometry');
-  return mapLandmarks(side,landmarks[0],photo.width,photo.height);
+  return {points:mapLandmarks(side,landmarks[0],photo.width,photo.height),mesh:landmarks[0]};
 }
 export const revokePhoto = (photo: Photo | undefined) => { if (photo) URL.revokeObjectURL(photo.url); };
 export type Photos = Partial<Record<Side, Photo>>;

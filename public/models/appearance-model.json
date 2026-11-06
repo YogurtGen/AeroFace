@@ -12,6 +12,8 @@
   ],
   "license": "MIT as published in the model archive repository",
   "runtime": "1.31.1",
+  "pipeline": "aligned-six-view-v1",
+  "aggregation": "Median of 3 centered framing scales (0.96, 1, 1.04), each paired with its horizontal mirror. The variation range is input sensitivity, not calibrated confidence.",
   "preprocessing": {
     "input": [
       1,
